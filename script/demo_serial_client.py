@@ -2,7 +2,7 @@
 import serial
 import time
 
-SLEEP_TIMEOUT = 0.03
+SLEEP_TIMEOUT = 0.005
 ser = None
 
 def set_value(disp, value):

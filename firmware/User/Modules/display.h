@@ -29,7 +29,7 @@ typedef struct {
 	uint16_t reset_pin;
 	GPIO_TypeDef * rs_port;
 	uint16_t rs_pin;
-}display_state_t;
+} display_state_t;
 
 int32_t lcd_io_init(void);
 void lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd, size_t cmd_size, const uint8_t *param, size_t param_size);

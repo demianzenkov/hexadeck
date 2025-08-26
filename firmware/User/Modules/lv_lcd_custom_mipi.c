@@ -139,11 +139,11 @@ static void init(lv_lcd_generic_mipi_driver_t * drv, lv_lcd_flag_t flags)
 
     /* perform software reset */
     send_cmd(drv, LV_LCD_CMD_SOFT_RESET, NULL, 0);
-    lv_delay_ms(200);
+    lv_delay_ms(10);
 
     /* LCD goes into sleep mode and display will be turned off after power on reset, exit sleep mode first */
     send_cmd(drv, LV_LCD_CMD_EXIT_SLEEP_MODE, NULL, 0);
-    lv_delay_ms(300);
+    lv_delay_ms(10);
 
     send_cmd(drv, LV_LCD_CMD_ENTER_NORMAL_MODE, NULL, 0);
 

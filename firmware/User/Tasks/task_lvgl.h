@@ -17,21 +17,17 @@ extern "C" {
 #endif
 
 
-#define LCD_H_RES       132
-#define LCD_V_RES       162
+#define LCD_H_RES       		(132)
+#define LCD_V_RES       		(162)
 
-#define LCD_H_PHYSICAL_RES       80
-#define LCD_V_PHYSICAL_RES       160
+#define LCD_H_PHYSICAL_RES      (80)
+#define LCD_V_PHYSICAL_RES      (160)
 
-#define LCD_DRAW_BUFF_HEIGHT  (32)
+#define LCD_DRAW_BUFF_HEIGHT  	(40)
 
-#define BUS_SPI1_POLL_TIMEOUT 0x1000U
-#define MAX_NAME_LENGTH (16)
-
-// void TaskLVGL_createTask();
-// void ui.showValue(uint8_t disp, int32_t value);
-// void ui.showName(uint8_t disp, const char * str);
-// void ui.showChannel(uint8_t disp, const char * str);
+#define BUS_SPI1_POLL_TIMEOUT 	(0x1000U)
+#define MAX_NAME_LENGTH 		(16)
+#define MAX_CH_LENGTH 			(4)
 
 
 typedef struct {
@@ -57,11 +53,25 @@ typedef enum {
 	COLOR_ELEMENT_BAR,
 } color_element_e;
 
+
 typedef struct {
     uint8_t display_id;
 	color_element_e element;
     lv_color_t color;
 } show_color_t;
+
+
+typedef struct {
+	uint8_t display_id;
+	uint8_t bar_level;
+	char name[MAX_NAME_LENGTH];
+	char channel[MAX_CH_LENGTH];
+	char value[MAX_NAME_LENGTH];
+	lv_color_t background_color;
+	lv_color_t bar_color;
+	lv_color_t text_color;
+	lv_color_t border_color;
+} ui_state_t;
 
 class UI {
 public:
@@ -72,19 +82,22 @@ public:
 	void showValue(uint8_t disp, const char * str);
 	void showName(uint8_t disp, const char * str);
 	void showChannel(uint8_t disp, const char * str);
-	void showColor(uint8_t disp, color_element_e element, lv_color_t color);
-	void showRange(uint8_t disp, float min_value, float max_value);
+	void showColor(uint8_t disp, color_element_e element, lv_color_t color);;
 
 private:
 	static void taskUI(void const *arg);
 	static void taskLVGL(void const *arg);
+	void lvgl_initUiState();
+	void lvgl_setUiState(ui_state_t * state);
 
 public:
-	lv_display_t *lcd_disp;
+	lv_display_t * lcd_disp;
 
 private:
 	osThreadId lvglTaskHandle;
 	osThreadId uiTaskHandle;
+	ui_state_t ui_states[16];
+	ui_state_t current_ui_state;
 	SemaphoreHandle_t lvgl_ready_sem;
 	SemaphoreHandle_t ui_busy_mutex;
 	QueueHandle_t show_name_queue;
@@ -92,6 +105,8 @@ private:
 	QueueHandle_t show_channel_queue;
 	QueueHandle_t show_level_queue;
 	QueueHandle_t show_color_queue;
+
+	QueueHandle_t ui_update_queue;
 	// QueueHandle_t show_image_queue;
 	
 	SemaphoreHandle_t ui_ready_sem;

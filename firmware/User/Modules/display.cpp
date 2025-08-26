@@ -19,7 +19,7 @@ extern SPI_HandleTypeDef hspi4;
 volatile int lcd_bus_busy = 0;
 volatile display_state_t * ds_active;
 
-display_state_t ds[16] = {
+const display_state_t ds[16] = {
         {0, &hspi1, D11_CS_GPIO_Port, D11_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
         {1, &hspi3, D21_CS_GPIO_Port, D21_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
         {2, &hspi2, D31_CS_GPIO_Port, D31_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
@@ -39,7 +39,7 @@ display_state_t ds[16] = {
 };
 
 void set_active_display(uint8_t id) {
-    ds_active = &ds[id];
+    ds_active = (display_state_t *)&ds[id];
 }
 
 static void lcd_color_transfer_ready_cb(SPI_HandleTypeDef *hspi) {
@@ -81,8 +81,7 @@ void lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd,
 	/* CS low */
     HAL_GPIO_WritePin(ds_active->cs_port, ds_active->cs_pin, GPIO_PIN_RESET);
 	/* send command */
-	if (HAL_SPI_Transmit(ds_active->hspi, (uint8_t *)cmd, cmd_size, BUS_SPI1_POLL_TIMEOUT)
-			== HAL_OK) {
+	if (HAL_SPI_Transmit(ds_active->hspi, (uint8_t *)cmd, cmd_size, BUS_SPI1_POLL_TIMEOUT) == HAL_OK) {
 		/* DCX high (data) */
         HAL_GPIO_WritePin(ds_active->rs_port, ds_active->rs_pin, GPIO_PIN_SET);
 		/* for short data blocks we use polling transfer */
@@ -109,8 +108,7 @@ void lcd_send_color(lv_display_t *disp, const uint8_t *cmd,
 	/* CS low */
     HAL_GPIO_WritePin(ds_active->cs_port, ds_active->cs_pin, GPIO_PIN_RESET);
 	/* send command */
-	if (HAL_SPI_Transmit(ds_active->hspi, (uint8_t *)cmd, cmd_size, BUS_SPI1_POLL_TIMEOUT)
-			== HAL_OK) {
+	if (HAL_SPI_Transmit(ds_active->hspi, (uint8_t *)cmd, cmd_size, BUS_SPI1_POLL_TIMEOUT) == HAL_OK) {
 		/* DCX high (data) */
         HAL_GPIO_WritePin(ds_active->rs_port, ds_active->rs_pin, GPIO_PIN_SET);
 		/* for color data use DMA transfer */

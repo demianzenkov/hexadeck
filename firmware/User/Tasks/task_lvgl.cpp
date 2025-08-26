@@ -11,7 +11,8 @@
 #include "lvgl.h"
 #include "src/drivers/display/st7735/lv_st7735.h"
 #include "lv_lcd_custom_mipi.h"
-#include "display.h"
+#include "src/display/lv_display.h"
+#include "src/display/lv_display_private.h"
 #include "ui.h"
 #include "screens.h"
 #include "task_lvgl.h"
@@ -53,8 +54,34 @@ static const uint8_t init_cmd_list[] = {
 	0xE1, 16, 0x04, 0x16, 0x06, 0x0D, 0x2D, 0x26, 0x23, 0x27, 0x27, 0x25, 0x2D, 0x3B, 0x00, 0x01, 0x04, 0x13,
 	LV_LCD_CMD_DELAY_MS, LV_LCD_CMD_EOF};
 
+
 UI::UI()
 {
+	// Initialize the ui_states array
+	ui_state_t init_states[16] = {
+		{0, 0, "Name0", "0", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{1, 0, "Name1", "1", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{2, 0, "Name2", "2", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{3, 0, "Name3", "3", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{4, 0, "Name4", "4", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{5, 0, "Name5", "5", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{6, 0, "Name6", "6", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{7, 0, "Name7", "7", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{8, 0, "Name8", "8", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{9, 0, "Name9", "9", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{10, 0, "Name10", "10", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{11, 0, "Name11", "11", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{12, 0, "Name12", "12", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{13, 0, "Name13", "13", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{14, 0, "Name14", "14", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{15, 0, "Name15", "15", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)}
+	};
+	// Copy the initialization data to the member array
+	for (int i = 0; i < 16; i++) {
+		memcpy(&ui_states[i], &init_states[i], sizeof(ui_state_t));
+	}
+
+	current_ui_state = {};
 }
 
 void UI::createTask()
@@ -63,19 +90,19 @@ void UI::createTask()
 	ui_busy_mutex = xSemaphoreCreateMutex();
 	xSemaphoreGive(ui_busy_mutex);
 
-	show_level_queue = xQueueCreate(16, sizeof(show_level_t));
-	show_name_queue = xQueueCreate(16, sizeof(show_string_t));
-	show_value_queue = xQueueCreate(16, sizeof(show_string_t));
-	show_channel_queue = xQueueCreate(16, sizeof(show_string_t));
-	show_color_queue = xQueueCreate(16, sizeof(show_color_t));
+	// show_level_queue = xQueueCreate(16, sizeof(show_level_t));
+	// show_name_queue = xQueueCreate(16, sizeof(show_string_t));
+	// show_value_queue = xQueueCreate(16, sizeof(show_string_t));
+	// show_channel_queue = xQueueCreate(16, sizeof(show_string_t));
+	// show_color_queue = xQueueCreate(16, sizeof(show_color_t));
 	// show_image_queue = xQueueCreate(16, sizeof(show_img_t));
 
-	ui_ready_sem = xSemaphoreCreateBinary();
+	ui_update_queue = xQueueCreate(32, sizeof(ui_state_t *));
 
-	osThreadDef(lvglTask, taskLVGL, osPriorityNormal, 0, 1024);
+	osThreadDef(lvglTask, taskLVGL, osPriorityAboveNormal, 0, 1024);
 	lvglTaskHandle = osThreadCreate(osThread(lvglTask), this);
 
-	osThreadDef(uiTask, taskUI, osPriorityNormal, 0, 1024);
+	osThreadDef(uiTask, taskUI, osPriorityNormal, 0, 2048);
 	uiTaskHandle = osThreadCreate(osThread(uiTask), this);
 
 #if TEST_UI
@@ -88,129 +115,28 @@ void UI::createTask()
 void UI::taskUI(void const *arg)
 {
 	UI *p_this = (UI *)arg;
-
 	xSemaphoreTake(p_this->lvgl_ready_sem, portMAX_DELAY);
-
-	//    set_active_display(0);
 
 	for (int i = 0; i < 16; i++)
 	{
 		xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
 		set_active_display(i);
-		// ui_show_logo();
 		ui_init();
 		loadScreen(SCREEN_ID_MAIN);
 		xSemaphoreGive(p_this->ui_busy_mutex);
 		osDelay(30);
 	}
-
-	xSemaphoreGive(p_this->ui_ready_sem);
-
-	show_string_t show_name;
-	show_string_t show_value;
-	show_level_t show_level;
-	show_string_t show_channel;
-	show_color_t show_color;
-	// show_img_t show_img;
+	p_this->lvgl_initUiState();
+	ui_state_t * ui_state;
 	
 	for (;;)
 	{
-		if(xQueueReceive(p_this->show_name_queue, &show_name, 1) == pdTRUE) {
-			xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
-			set_active_display(show_name.display_id);
-			lv_obj_t *obj = objects.label_name;
-			lv_label_set_text(obj, show_name.str);
-			xSemaphoreGive(p_this->ui_busy_mutex);
-			osDelay(30);
+		if(xQueueReceive(p_this->ui_update_queue, &ui_state, 1) == pdTRUE) {
+			while((p_this->lcd_disp->flushing) || (p_this->lcd_disp->rendering_in_progress))
+			;
+			p_this->lvgl_setUiState(ui_state);
+			osDelay(5);
 		}
-
-		if(xQueueReceive(p_this->show_value_queue, &show_value, 1) == pdTRUE) {
-			xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
-			set_active_display(show_value.display_id);
-			lv_label_set_text(objects.label_level, show_value.str);
-			xSemaphoreGive(p_this->ui_busy_mutex);
-			osDelay(30);
-		}
-		if(xQueueReceive(p_this->show_channel_queue, &show_channel, 1) == pdTRUE) {
-			xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
-			set_active_display(show_channel.display_id);
-			lv_obj_t *obj = objects.label_channel;
-			lv_label_set_text(obj, show_channel.str);
-			xSemaphoreGive(p_this->ui_busy_mutex);
-			osDelay(30);
-		}
-		if(xQueueReceive(p_this->show_level_queue, &show_level, 1) == pdTRUE) {
-			xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
-			set_active_display(show_level.display_id);
-			lv_bar_set_value(objects.bar_level, show_level.level, LV_ANIM_OFF);
-			lv_obj_invalidate(objects.bar_level);
-			xSemaphoreGive(p_this->ui_busy_mutex);
-			osDelay(30);
-		}
-		
-		if(xQueueReceive(p_this->show_color_queue, &show_color, 1) == pdTRUE) {
-			xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
-			set_active_display(show_color.display_id);
-			lv_obj_t *obj = NULL;
-			switch (show_color.element)
-			{
-			case COLOR_ELEMENT_BACKGROUND: {
-				obj = objects.panel_general;
-				lv_obj_set_style_bg_color(obj, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				obj = objects.panel_channel;
-				lv_obj_set_style_bg_color(obj, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				obj = objects.panel_text;
-				lv_obj_set_style_bg_color(obj, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				break;
-			}
-			case COLOR_ELEMENT_BORDER: {
-				obj = objects.panel_general;
-				lv_obj_set_style_border_color(obj, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				obj = objects.panel_channel;
-				lv_obj_set_style_border_color(obj, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				obj = objects.panel_text;
-				lv_obj_set_style_border_color(obj, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				
-				break;
-			}
-			case COLOR_ELEMENT_TEXT: {
-				lv_obj_set_style_text_color(objects.label_name, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(objects.label_name);	
-				lv_obj_set_style_text_color(objects.label_channel, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(objects.label_channel);
-				lv_obj_set_style_text_color(objects.label_level, show_color.color, LV_PART_MAIN | LV_STATE_DEFAULT);
-				lv_obj_invalidate(objects.label_level);
-				break;
-			}
-			case COLOR_ELEMENT_BAR: {
-				obj = objects.bar_level;
-				lv_obj_set_style_bg_color(obj, show_color.color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-				lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-				lv_obj_invalidate(obj);
-				break;
-			}
-			default: {
-				break;
-			}
-			}
-			
-			xSemaphoreGive(p_this->ui_busy_mutex);
-			osDelay(30);
-		}
-		
-
-		// if(xQueueReceive(show_image_queue, &show_img, 1) == pdTRUE) {
-		// 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-		// 	set_active_display(show_img.display_id);
-		// 	ui_show_image(show_img.img_buf, show_img.img_size);
-		// 	xSemaphoreGive(ui_busy_mutex);
-		// }
 	}
 }
 
@@ -246,9 +172,8 @@ void UI::taskLVGL(void const *arg)
 		lv_lcd_generic_mipi_send_cmd_list(p_this->lcd_disp, init_cmd_list);
 		lv_display_set_rotation(p_this->lcd_disp, LV_DISPLAY_ROTATION_270);
 		lv_display_set_resolution(p_this->lcd_disp, LCD_H_PHYSICAL_RES, LCD_V_PHYSICAL_RES);
-		// lv_display_set_physical_resolution(lcd_disp, LCD_H_PHYSICAL_RES, LCD_V_PHYSICAL_RES+2);
 		lv_st7735_set_invert(p_this->lcd_disp, 1);
-		lv_display_set_offset(p_this->lcd_disp, 1, (LCD_H_RES - LCD_H_PHYSICAL_RES) / 2);
+		lv_display_set_offset(p_this->lcd_disp, (LCD_V_RES - LCD_V_PHYSICAL_RES) / 2, (LCD_H_RES - LCD_H_PHYSICAL_RES) / 2);
 	}
 
 	/* Allocate draw buffers on the heap. In this example we use two partial buffers of 1/10th size of the screen */
@@ -285,16 +210,89 @@ void UI::taskLVGL(void const *arg)
 	}
 }
 
+void UI::lvgl_initUiState()
+{
+	for(int i = 0; i < 16; i++) {
+		memset(&current_ui_state, 0, sizeof(current_ui_state));
+		lvgl_setUiState(&ui_states[i]);
+		osDelay(50);
+	}
+}
+void UI::lvgl_setUiState(ui_state_t * state)
+{
+	uint8_t display_id = state->display_id;
+	if (display_id > 15)
+	{
+		return;
+	}
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	current_ui_state.display_id = state->display_id;
+	set_active_display(display_id);
+	
+	if(current_ui_state.bar_level != state->bar_level) {
+		current_ui_state.bar_level = state->bar_level;
+		lv_bar_set_value(objects.bar_level, state->bar_level, LV_ANIM_OFF);
+	}
+	if(strcmp(current_ui_state.name, state->name) != 0) {
+		strncpy(current_ui_state.name, state->name, sizeof(current_ui_state.name));
+		lv_label_set_text(objects.label_name, state->name);
+	}
+	if(strcmp(current_ui_state.channel, state->channel) != 0) {
+		strncpy(current_ui_state.channel, state->channel, sizeof(current_ui_state.channel));
+		lv_label_set_text(objects.label_channel, state->channel);
+	}
+	if(strcmp(current_ui_state.value, state->value) != 0) {
+		strncpy(current_ui_state.value, state->value, sizeof(current_ui_state.value));
+		lv_label_set_text(objects.label_level, state->value);
+	}
+	if(lv_color_eq(current_ui_state.bar_color, state->bar_color) == false) {
+		current_ui_state.bar_color = state->bar_color;
+		lv_obj_t *obj = objects.bar_level;
+		lv_obj_set_style_bg_color(obj, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+	}
+	if(lv_color_eq(current_ui_state.border_color, state->border_color) == false) {
+		current_ui_state.border_color = state->border_color;
+		lv_obj_t *obj = NULL;
+		obj = objects.panel_general;
+		lv_obj_set_style_border_color(obj, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		obj = objects.panel_channel;
+		lv_obj_set_style_border_color(obj, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		obj = objects.panel_text;
+		lv_obj_set_style_border_color(obj, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if(lv_color_eq(current_ui_state.text_color, state->text_color) == false) {
+		current_ui_state.text_color = state->text_color;
+		lv_obj_set_style_text_color(objects.label_name, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.label_channel, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.label_level, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if(lv_color_eq(current_ui_state.background_color, state->background_color) == false) {
+		current_ui_state.background_color = state->background_color;
+		lv_obj_t *obj = NULL;
+		obj = objects.panel_general;
+		lv_obj_set_style_bg_color(obj, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		obj = objects.panel_channel;
+		lv_obj_set_style_bg_color(obj, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		obj = objects.panel_text;
+		lv_obj_set_style_bg_color(obj, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	xSemaphoreGive(ui_busy_mutex);
+}
+
 
 void UI::showBarLevel(uint8_t disp, uint8_t level)
 {
 	if(level > 127) {
 		return;
 	}
-	show_level_t show_level = {};
-	show_level.display_id = disp;
-	show_level.level = level;
-	xQueueSend(show_level_queue, &show_level, portMAX_DELAY);
+	ui_states[disp].bar_level = level;
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
+	// show_level_t show_level = {};
+	// show_level.display_id = disp;
+	// show_level.level = level;
+	// xQueueSend(show_level_queue, &show_level, portMAX_DELAY);
 }
 
 void UI::showValue(uint8_t disp, const char *str)
@@ -303,10 +301,17 @@ void UI::showValue(uint8_t disp, const char *str)
 	{
 		return;
 	}
-	show_string_t show_value = {};
-	show_value.display_id = disp;
-	strncpy(show_value.str, str, sizeof(show_value.str));
-	xQueueSend(show_value_queue, &show_value, portMAX_DELAY);
+
+	memset(ui_states[disp].value, 0, sizeof(ui_states[disp].value));
+	strncpy(ui_states[disp].value, str, sizeof(ui_states[disp].value));
+
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
+	
+	// show_string_t show_value = {};
+	// show_value.display_id = disp;
+	// strncpy(show_value.str, str, sizeof(show_value.str));
+	// xQueueSend(show_value_queue, &show_value, portMAX_DELAY);
 }
 
 void UI::showName(uint8_t disp, const char *str)
@@ -315,10 +320,14 @@ void UI::showName(uint8_t disp, const char *str)
 	{
 		return;
 	}
-	show_string_t show_name = {};
-	show_name.display_id = disp;
-	strncpy(show_name.str, str, sizeof(show_name.str));
-	xQueueSend(show_name_queue, &show_name, portMAX_DELAY);
+	memset(ui_states[disp].name, 0, sizeof(ui_states[disp].name));
+	strncpy(ui_states[disp].name, str, sizeof(ui_states[disp].name));
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
+	// show_string_t show_name = {};
+	// show_name.display_id = disp;
+	// strncpy(show_name.str, str, sizeof(show_name.str));
+	// xQueueSend(show_name_queue, &show_name, portMAX_DELAY);
 }
 
 void UI::showChannel(uint8_t disp, const char *str)
@@ -327,19 +336,41 @@ void UI::showChannel(uint8_t disp, const char *str)
 	{
 		return;
 	}
-	show_string_t show_name = {};
-	show_name.display_id = disp;
-	strncpy(show_name.str, str, sizeof(show_name.str));
-	xQueueSend(show_channel_queue, &show_name, portMAX_DELAY);
+	memset(ui_states[disp].channel, 0, sizeof(ui_states[disp].channel));
+	strncpy(ui_states[disp].channel, str, sizeof(ui_states[disp].channel));
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
+	// show_string_t show_name = {};
+	// show_name.display_id = disp;
+	// strncpy(show_name.str, str, sizeof(show_name.str));
+	// xQueueSend(show_channel_queue, &show_name, portMAX_DELAY);
 }
 
 void UI::showColor(uint8_t disp, color_element_e element, lv_color_t color)
 {
-	show_color_t show_color = {};
-	show_color.display_id = disp;
-	show_color.element = element;
-	show_color.color = color;
-	xQueueSend(show_color_queue, &show_color, portMAX_DELAY);
+	switch(element) {
+		case COLOR_ELEMENT_BACKGROUND:
+			ui_states[disp].background_color = color;
+			break;
+		case COLOR_ELEMENT_BORDER:
+			ui_states[disp].border_color = color;
+			break;
+		case COLOR_ELEMENT_TEXT:
+			ui_states[disp].text_color = color;
+			break;
+		case COLOR_ELEMENT_BAR:
+			ui_states[disp].bar_color = color;
+			break;
+		default:
+			return;
+	}
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
+	// show_color_t show_color = {};
+	// show_color.display_id = disp;
+	// show_color.element = element;
+	// show_color.color = color;
+	// xQueueSend(show_color_queue, &show_color, portMAX_DELAY);
 }
 
 #if TEST_UI

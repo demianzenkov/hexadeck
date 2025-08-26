@@ -45,9 +45,6 @@ void TaskEncoder_createTask() {
        enc_midi_ev.value = encoder_values[i];
        TaskMIDI_sendEvent(&enc_midi_ev);
        ui.showBarLevel(i, encoder_values[i]);
-	   char ch_str[3];
-	   snprintf(ch_str, sizeof(ch_str), "%d", i+1);
-	   ui.showChannel(i, ch_str);
    }
     
  	while (1) {
