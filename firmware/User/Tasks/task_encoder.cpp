@@ -19,13 +19,12 @@ static void TaskEncoder_task(void const *arg);
 osThreadId encoderTaskHandle;
 QueueHandle_t encoder_queue = 0;
 encoder_ev_t encoder_ev[16] = {{0, 0, 0, 0, 0}, {1, 0, 0, 0, 0}, {2, 0, 0, 0, 0}, {3, 0, 0, 0, 0}, {4, 0, 0, 0, 0}, {5, 0, 0, 0, 0}, {6, 0, 0, 0, 0}, {7, 0, 0, 0, 0}, {8, 0, 0, 0, 0}, {9, 0, 0, 0, 0}, {10, 0, 0, 0, 0}, {11, 0, 0, 0, 0}, {12, 0, 0, 0, 0}, {13, 0, 0, 0, 0}, {14, 0, 0, 0, 0}, {15, 0, 0, 0, 0}};
-// encoder_ev_t encoder_ev[16] = {{0, 0, 0, 0, 0}, {4, 0, 0, 0, 0}, {8, 0, 0, 0, 0}, {12, 0, 0, 0, 0}, {1, 0, 0, 0, 0}, {5, 0, 0, 0, 0}, {9, 0, 0, 0, 0}, {13, 0, 0, 0, 0}, {2, 0, 0, 0, 0}, {6, 0, 0, 0, 0}, {10, 0, 0, 0, 0}, {14, 0, 0, 0, 0}, {3, 0, 0, 0, 0}, {7, 0, 0, 0, 0}, {11, 0, 0, 0, 0}, {15, 0, 0, 0 ,0}};
 
 uint8_t encoder_values[16] = {};
-int32_t encoder_delta_values[16] = {};
-uint32_t ev_counter[16] = {};
-uint32_t ev_last_time[16] = {};
-
+uint8_t encoder_max_values[16] = {ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE,
+								  ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE,
+								  ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE,
+								  ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE, ENCODER_MAX_VALUE};
 midi_event_t enc_midi_ev = {};
 
 void TaskEncoder_createTask() {
@@ -60,7 +59,7 @@ void TaskEncoder_createTask() {
                                 encoder_values[ev.encoder_id]--;
 							}
                          } else {
-							if(encoder_values[ev.encoder_id] < ENCODER_MAX_VALUE) {
+							if(encoder_values[ev.encoder_id] < encoder_max_values[ev.encoder_id]) {
 								encoder_values[ev.encoder_id]++;
 							}
                          }
@@ -76,7 +75,7 @@ void TaskEncoder_createTask() {
                  } else if(ev.prev_state_a == 1 && ev.state_a == 0) {
                      if(ev.prev_state_b == 0 && ev.state_b == 1) {
                          if((ev.encoder_id != 15) && (ev.encoder_id != 11)) {
-							if(encoder_values[ev.encoder_id] < ENCODER_MAX_VALUE) {
+							if(encoder_values[ev.encoder_id] < encoder_max_values[ev.encoder_id]) {
 								encoder_values[ev.encoder_id]++;
 							}
                          } else {

@@ -28,6 +28,7 @@ typedef struct {
 } encoder_ev_t;
 
 extern uint8_t encoder_values[16];
+extern uint8_t encoder_max_values[16];
 void TaskEncoder_createTask();
 
 

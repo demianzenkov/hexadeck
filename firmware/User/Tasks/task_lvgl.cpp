@@ -59,22 +59,22 @@ UI::UI()
 {
 	// Initialize the ui_states array
 	ui_state_t init_states[16] = {
-		{0, 0, "Name0", "0", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{1, 0, "Name1", "1", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{2, 0, "Name2", "2", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{3, 0, "Name3", "3", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{4, 0, "Name4", "4", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{5, 0, "Name5", "5", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{6, 0, "Name6", "6", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{7, 0, "Name7", "7", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{8, 0, "Name8", "8", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{9, 0, "Name9", "9", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{10, 0, "Name10", "10", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{11, 0, "Name11", "11", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{12, 0, "Name12", "12", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{13, 0, "Name13", "13", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{14, 0, "Name14", "14", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{15, 0, "Name15", "15", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)}
+		{0,  0, 127, "Name0", "0", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{1,  0, 127, "Name1", "1", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{2,  0, 127, "Name2", "2", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{3,  0, 127, "Name3", "3", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{4,  0, 127, "Name4", "4", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{5,  0, 127, "Name5", "5", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{6,  0, 127, "Name6", "6", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{7,  0, 127, "Name7", "7", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{8,  0, 127, "Name8", "8", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{9,	 0, 127, "Name9", "9", "0.00", 	lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{10, 0, 127, "Name10", "10", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{11, 0, 127, "Name11", "11", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{12, 0, 127, "Name12", "12", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{13, 0, 127, "Name13", "13", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{14, 0, 127, "Name14", "14", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{15, 0, 127, "Name15", "15", "0.00", lv_color_make(0x1e, 0x1e, 0x1e),	lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)}
 	};
 	// Copy the initialization data to the member array
 	for (int i = 0; i < 16; i++) {
@@ -228,7 +228,10 @@ void UI::lvgl_setUiState(ui_state_t * state)
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	current_ui_state.display_id = state->display_id;
 	set_active_display(display_id);
-	
+	if(current_ui_state.max_bar_level != state->max_bar_level) {
+		current_ui_state.max_bar_level = state->max_bar_level;
+		lv_bar_set_range(objects.bar_level, 0, current_ui_state.max_bar_level);
+	}
 	if(current_ui_state.bar_level != state->bar_level) {
 		current_ui_state.bar_level = state->bar_level;
 		lv_bar_set_value(objects.bar_level, state->bar_level, LV_ANIM_OFF);
@@ -277,6 +280,8 @@ void UI::lvgl_setUiState(ui_state_t * state)
 		obj = objects.panel_text;
 		lv_obj_set_style_bg_color(obj, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 	}
+
+
 	xSemaphoreGive(ui_busy_mutex);
 }
 
@@ -293,6 +298,16 @@ void UI::showBarLevel(uint8_t disp, uint8_t level)
 	// show_level.display_id = disp;
 	// show_level.level = level;
 	// xQueueSend(show_level_queue, &show_level, portMAX_DELAY);
+}
+
+void UI::changeBarRange(uint8_t disp, uint8_t max_level)
+{
+	if(max_level > 127) {
+		return;
+	}
+	ui_states[disp].max_bar_level = max_level;
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
 
 void UI::showValue(uint8_t disp, const char *str)

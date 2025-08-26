@@ -24,6 +24,7 @@ Device supports a set of commands to setup interface fields through serial port.
 | `/set/level/{x}/{y}`     | {x} - display id<br />{y} - bar level                        |
 | `/set/channel/{x}/{y}`   | {x} - display id<br />{y} - channel                          |
 | `/set/name/{x}/{y}`      | {x} - display id<br />{y} - name                             |
+| `/set/range/{x}/{y}`     | {x} - display id<br />{y} - max range limit for bar & MIDI values [1..127] |
 | `/set/color/{x}/{y}/{z}` | {x} - display id<br />{y} - color element: "bg", "text", "border", "bar"<br />{z} - RGB color in hex, e.g. - "ff0000" - red, "ffffff" - white, etc. |
 
 ##### Interface example

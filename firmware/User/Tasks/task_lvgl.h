@@ -64,6 +64,7 @@ typedef struct {
 typedef struct {
 	uint8_t display_id;
 	uint8_t bar_level;
+	uint8_t max_bar_level;
 	char name[MAX_NAME_LENGTH];
 	char channel[MAX_CH_LENGTH];
 	char value[MAX_NAME_LENGTH];
@@ -82,7 +83,8 @@ public:
 	void showValue(uint8_t disp, const char * str);
 	void showName(uint8_t disp, const char * str);
 	void showChannel(uint8_t disp, const char * str);
-	void showColor(uint8_t disp, color_element_e element, lv_color_t color);;
+	void showColor(uint8_t disp, color_element_e element, lv_color_t color);
+	void changeBarRange(uint8_t disp, uint8_t max_level);
 
 private:
 	static void taskUI(void const *arg);

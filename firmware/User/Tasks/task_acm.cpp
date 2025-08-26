@@ -165,6 +165,35 @@ void ACM::parseInputBuffer(char * buffer) {
 				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
 			}
 		}
+		else if(strncmp(cmd, "/set/range/", 11) == 0) {
+			cmd += 11; // skip "/set/range/"
+			uint8_t disp_id = atoi(cmd);
+			if(disp_id > 15) {
+				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
+				return;
+			}
+			cmd = strchr(cmd, '/');
+			if(cmd != NULL) {
+				cmd++; // skip '/'
+				int32_t max_level = atoi(cmd);
+				if((max_level < 1) || (max_level > 127)) {
+					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
+					return;
+				}
+				encoder_max_values[disp_id] = max_level;
+				ui.changeBarRange(disp_id, max_level);
+				
+				if(encoder_values[disp_id] > max_level) {
+					encoder_values[disp_id] = max_level;
+					ui.showBarLevel(disp_id, encoder_values[disp_id]);
+				}
+				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
+				return;
+			}
+			else {
+				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
+			}
+		}
 		// /set/color/bg/x/ff0012 - where x - display id, 0xff - r, 0x00 - g, 0x12 - b
 		else if(strncmp(cmd, "/set/color/bg/", 14) == 0) {
 			cmd += 14; // skip "/set/color/bg/"
@@ -262,37 +291,7 @@ void ACM::parseInputBuffer(char * buffer) {
 				}
 			}
 		}
-		// else if(strncmp(cmd, "/set/range/", 11) == 0) {
-		// 	cmd += 11; // skip "/set/range/"
-		// 	uint8_t disp_id = atoi(cmd);
-		// 	if(disp_id > 15) {
-		// 		CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-		// 		return;
-		// 	}
-		// 	cmd = strchr(cmd, '/');
-		// 	if(cmd != NULL) {
-		// 		cmd++; // skip '/'
-		// 		char * min_cmd = cmd;
-		// 		cmd = strchr(cmd, '/');
-		// 		if(cmd - min_cmd > 5) {
-		// 			CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-		// 			return;
-		// 		}
-		// 		float min_value = atof(min_cmd);
-		// 		if(cmd != NULL) {
-		// 			cmd++; // skip '/'
-		// 			if(strlen(cmd) > 5) {
-		// 				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-		// 				return;
-		// 			}
-		// 			float max_value = atof(cmd);
-		// 			ui.showRange(disp_id, min_value, max_value);
-		// 			CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-		// 			return;
-		// 		}
-		// 	}
-		// 	CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-		// }
+		
 		else {
 			CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
 		}
