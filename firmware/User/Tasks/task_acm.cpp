@@ -7,7 +7,7 @@
 #include "task_lvgl.h"
 #include "task_encoder.h"
 #include "main.h"
-
+#include "task_midi.h"
 
 // extern QueueHandle_t show_image_queue;
 // uint8_t pic_buffer[25604];
@@ -185,7 +185,15 @@ void ACM::parseInputBuffer(char * buffer) {
 				
 				if(encoder_values[disp_id] > max_level) {
 					encoder_values[disp_id] = max_level;
+
+					midi_event_t enc_midi_ev = {};
+					enc_midi_ev.message_type = MIDI_CC;
+					enc_midi_ev.channel = disp_id;
+					enc_midi_ev.note = MIDI_CC_MODULATION;
+					enc_midi_ev.value = encoder_values[disp_id];
+					
 					ui.showBarLevel(disp_id, encoder_values[disp_id]);
+					TaskMIDI_sendEvent(&enc_midi_ev);
 				}
 				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
 				return;
