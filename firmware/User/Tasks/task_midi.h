@@ -28,6 +28,7 @@ typedef struct {
 
 void TaskMIDI_createTask();
 int TaskMIDI_sendEvent(midi_event_t * event);
+void USBD_MIDI_DataInHandler(uint8_t *usb_rx_buffer, uint8_t usb_rx_buffer_length);
 
 #ifdef __cplusplus
 }

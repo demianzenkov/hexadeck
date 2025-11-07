@@ -122,10 +122,11 @@ typedef struct _USBD_MIDI_Itf
 
 typedef struct
 {
-  uint32_t             Protocol;   
-  uint32_t             IdleState;  
-  uint32_t             AltSetting;
-  MIDI_StateTypeDef     state;  
+  uint32_t			Protocol;   
+  uint32_t			IdleState;  
+  uint32_t			AltSetting;
+  MIDI_StateTypeDef	state;
+  uint32_t 			RxLength;
 }
 USBD_MIDI_HandleTypeDef; 
 

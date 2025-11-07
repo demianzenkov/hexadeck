@@ -46,42 +46,6 @@
 #include "usbd_ctlreq.h"
 
 
-/** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
-  * @{
-  */
-
-
-/** @defgroup USBD_MIDI 
-  * @brief usbd core module
-  * @{
-  */ 
-
-/** @defgroup USBD_MIDI_Private_TypesDefinitions
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBD_MIDI_Private_Defines
-  * @{
-  */ 
-
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBD_MIDI_Private_Macros
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-
 
 /** @defgroup USBD_MIDI_Private_FunctionPrototypes
   * @{
@@ -657,6 +621,8 @@ static uint8_t  USBD_MIDI_Init (USBD_HandleTypeDef *pdev,
                USBD_EP_TYPE_BULK,
                MIDI_EPOUT_SIZE);
   
+	pdev->ep_in[MIDI_EPIN_ADDR & 0xFU].is_used = 1U;
+	pdev->ep_out[MIDI_EPOUT_ADDR & 0xFU].is_used = 1U;
   USBD_LL_PrepareReceive(pdev, 
                MIDI_EPOUT_ADDR,                                      
                usb_rx_buffer,
@@ -812,7 +778,7 @@ uint8_t USBD_MIDI_SendReport     (USBD_HandleTypeDef  *pdev,
     if(hmidi->state == MIDI_IDLE)
     {
       hmidi->state = MIDI_BUSY;
-      USBD_LL_Transmit (pdev, MIDI_EPIN_ADDR, report, len);
+      USBD_LL_Transmit(pdev, MIDI_EPIN_ADDR, report, len);
     }
   }
   return USBD_OK;
@@ -870,15 +836,15 @@ static uint8_t  USBD_MIDI_DataIn (USBD_HandleTypeDef *pdev,
   */
 static uint8_t  USBD_MIDI_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-  if (epnum != (MIDI_EPOUT_ADDR & 0x0F)) return USBD_FAIL;
+	if (epnum != (MIDI_EPOUT_ADDR & 0x0F))
+  		return USBD_FAIL;
 
-  USBD_MIDI_DataInHandler(usb_rx_buffer, MIDI_EPOUT_SIZE);
-  
-  memset(usb_rx_buffer, 0, MIDI_EPOUT_SIZE);
-  
-  USBD_LL_PrepareReceive(pdev, MIDI_EPOUT_ADDR, usb_rx_buffer, MIDI_EPOUT_SIZE);  
-  
-  return USBD_OK;
+	USBD_MIDI_HandleTypeDef *hmidi = pdev->pClassData_MIDI;
+	hmidi->RxLength = USBD_LL_GetRxDataSize(pdev, epnum);
+	USBD_MIDI_DataInHandler(usb_rx_buffer, hmidi->RxLength);
+	memset(usb_rx_buffer, 0, MIDI_EPOUT_SIZE);
+	USBD_LL_PrepareReceive(pdev, MIDI_EPOUT_ADDR, usb_rx_buffer, MIDI_EPOUT_SIZE);  
+	return USBD_OK;
 }
 
 /**
@@ -958,8 +924,6 @@ void USBD_Update_MIDI_DESC(uint8_t *desc, uint8_t itf_no, uint8_t in_ep, uint8_t
   MIDI_STR_DESC_IDX = str_idx;
 }
 
-
-/**
 
 /**
   * @}
