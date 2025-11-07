@@ -44,23 +44,23 @@ void TaskButtons_task(void const *arg) {
                 button_state[i*4+2] = 0;
                 button_state[i*4+3] = 0;
             
-
-                if((adc_values[i] > 830) && (adc_values[i] < 870)) {
+                if((adc_values[i] > 685) && (adc_values[i] < 710)) {
+					// Button i.0
+					button_state[i*4] = 1;
+				}
+                else if((adc_values[i] > 720) && (adc_values[i] < 750)) {
+					// Button i.1
+					button_state[i*4+1] = 1;
+				}
+                else if((adc_values[i] > 770) && (adc_values[i] < 800)) {
+					// Button i.2
+					button_state[i*4+2] = 1;
+				}
+                else if((adc_values[i] > 830) && (adc_values[i] < 870)) {
                     // Button i.3
                     button_state[i*4+3] = 1;
                 }
-                else if((adc_values[i] > 770) && (adc_values[i] < 800)) {
-                    // Button i.2
-                    button_state[i*4+2] = 1;
-                }
-                else if((adc_values[i] > 720) && (adc_values[i] < 750)) {
-                    // Button i.1
-                    button_state[i*4+1] = 1;
-                }
-            	else if((adc_values[i] > 685) && (adc_values[i] < 710)) {
-                    // Button i.0
-                    button_state[i*4] = 1;
-                }
+
                 // TODO: Handle several buttons together pressed
             }
 

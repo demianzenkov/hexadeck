@@ -21,21 +21,21 @@ volatile display_state_t * ds_active;
 
 const display_state_t ds[16] = {
         {0, &hspi1, D11_CS_GPIO_Port, D11_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
-        {1, &hspi3, D21_CS_GPIO_Port, D21_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
-        {2, &hspi2, D31_CS_GPIO_Port, D31_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
-        {3, &hspi4, D41_CS_GPIO_Port, D41_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin},
-        {4, &hspi1, D12_CS_GPIO_Port, D12_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
-        {5, &hspi3, D22_CS_GPIO_Port, D22_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
-        {6, &hspi2, D32_CS_GPIO_Port, D32_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
-        {7, &hspi4, D42_CS_GPIO_Port, D42_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin},
-        {8, &hspi1, D13_CS_GPIO_Port, D13_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
-        {9, &hspi3, D23_CS_GPIO_Port, D23_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
-        {10, &hspi2, D33_CS_GPIO_Port, D33_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
-        {11, &hspi4, D43_CS_GPIO_Port, D43_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin},
-        {12, &hspi1, D14_CS_GPIO_Port, D14_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
-        {13, &hspi3, D24_CS_GPIO_Port, D24_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
-        {14, &hspi2, D34_CS_GPIO_Port, D34_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
-        {15, &hspi4, D44_CS_GPIO_Port, D44_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin}
+		{1, &hspi1, D12_CS_GPIO_Port, D12_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
+		{2, &hspi1, D13_CS_GPIO_Port, D13_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
+		{3, &hspi1, D14_CS_GPIO_Port, D14_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
+		{4, &hspi3, D21_CS_GPIO_Port, D21_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
+		{5, &hspi3, D22_CS_GPIO_Port, D22_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
+		{6, &hspi3, D23_CS_GPIO_Port, D23_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
+		{7, &hspi3, D24_CS_GPIO_Port, D24_CS_Pin, D2_RESET_GPIO_Port, D2_RESET_Pin, D2_RS_GPIO_Port, D2_RS_Pin},
+		{8, &hspi2, D31_CS_GPIO_Port, D31_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
+		{9, &hspi2, D32_CS_GPIO_Port, D32_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
+		{10,&hspi2, D33_CS_GPIO_Port, D33_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
+		{11,&hspi2, D34_CS_GPIO_Port, D34_CS_Pin, D3_RESET_GPIO_Port, D3_RESET_Pin, D3_RS_GPIO_Port, D3_RS_Pin},
+		{12,&hspi4, D41_CS_GPIO_Port, D41_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin},
+		{13,&hspi4, D42_CS_GPIO_Port, D42_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin},
+		{14,&hspi4, D43_CS_GPIO_Port, D43_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin},
+		{15,&hspi4, D44_CS_GPIO_Port, D44_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin}
 };
 
 void set_active_display(uint8_t id) {

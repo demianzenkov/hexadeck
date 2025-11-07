@@ -170,10 +170,12 @@ void UI::taskLVGL(void const *arg)
 	{
 		set_active_display(i);
 		lv_lcd_generic_mipi_send_cmd_list(p_this->lcd_disp, init_cmd_list);
-		lv_display_set_rotation(p_this->lcd_disp, LV_DISPLAY_ROTATION_270);
+		lv_display_set_rotation(p_this->lcd_disp, LV_DISPLAY_ROTATION_90);
 		lv_display_set_resolution(p_this->lcd_disp, LCD_H_PHYSICAL_RES, LCD_V_PHYSICAL_RES);
-		lv_st7735_set_invert(p_this->lcd_disp, 1);
-		lv_display_set_offset(p_this->lcd_disp, (LCD_V_RES - LCD_V_PHYSICAL_RES) / 2, (LCD_H_RES - LCD_H_PHYSICAL_RES) / 2);
+		// lv_st7735_set_invert(p_this->lcd_disp, 1);
+		lv_display_set_offset(p_this->lcd_disp, (LCD_V_RES - LCD_V_PHYSICAL_RES) / 2 - 1, (LCD_H_RES - LCD_H_PHYSICAL_RES) / 2 - 2);
+		// lv_display_set_offset(p_this->lcd_disp, (LCD_V_RES - LCD_V_PHYSICAL_RES) / 2 - 2, (LCD_H_RES - LCD_H_PHYSICAL_RES) / 2 - 2);
+		
 	}
 
 	/* Allocate draw buffers on the heap. In this example we use two partial buffers of 1/10th size of the screen */
