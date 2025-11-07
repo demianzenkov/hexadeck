@@ -66,6 +66,9 @@ void TaskMIDI_task(void const *arg) {
             };
 			if(midi_ev.note == MIDI_CC_MODULATION) {
 				if(midi_ev.channel < 16) {
+					if(midi_ev.value > encoder_max_values[midi_ev.channel]) {
+						midi_ev.value = encoder_max_values[midi_ev.channel];
+					}
 					ui.showBarLevel(midi_ev.channel, midi_ev.value);
 					encoder_values[midi_ev.channel] = midi_ev.value;
 				}
