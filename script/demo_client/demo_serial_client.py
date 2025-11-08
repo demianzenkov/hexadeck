@@ -265,7 +265,7 @@ def test_methods():
         # set_channel(i, i+1)
   
 # Establish a serial connection with the device
-ser = serial.Serial('/dev/cu.usbmodem3695347034303', 576000)
+ser = serial.Serial('/dev/cu.usbmodem3962346234323', 576000)
 init_values()
 demo_sequence()
 # test_methods()

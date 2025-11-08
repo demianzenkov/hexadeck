@@ -73,8 +73,8 @@ void TaskMIDI_task(void const *arg) {
 					encoder_values[midi_ev.channel] = midi_ev.value;
 				}
 			}
-			// Process incoming MIDI event
 		}
+
 		vTaskDelay(1);
 	}
 }
