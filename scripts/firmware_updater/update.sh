@@ -21,7 +21,31 @@ fi
 
 export DYLD_LIBRARY_PATH=$(brew --prefix libusb)/lib
 
-BIN_FILE="./scripts/firmware_updater/binaries/8dof_controller.bin"
+# Parse arguments
+
+# Parse arguments
+BIN_DIR="./scripts/firmware_updater/binaries"
+BIN_FILE=""
+while getopts "D:" opt; do
+  case $opt in
+    D)
+      # If argument is an absolute or relative path, use it directly
+      if [[ "$OPTARG" == /* || "$OPTARG" == .* ]]; then
+        BIN_FILE="$OPTARG"
+      else
+        # Otherwise, treat as filename in binaries directory
+        BIN_FILE="$BIN_DIR/$OPTARG"
+      fi
+      ;;
+    *)
+      echo "Usage: $0 [-D binary_file_name_or_path]"
+      exit 1
+      ;;
+  esac
+done
+
+# Default binary path if not provided
+BIN_FILE="${BIN_FILE:-$BIN_DIR/8dof_controller.bin}"
 ADDRESS="0x08000000"
 
 if [ ! -f "$BIN_FILE" ]; then
