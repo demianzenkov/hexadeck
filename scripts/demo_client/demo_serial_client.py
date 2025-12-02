@@ -2,6 +2,7 @@
 import serial
 import time
 
+DEVICE_USB_PATH = '/dev/cu.usbmodem3961348334323'
 SLEEP_TIMEOUT = 0.005
 ser = None
 
@@ -64,16 +65,16 @@ def init_values():
 	for i in range(0, 16):
 		set_name(i, instrument_names[i])
 		set_value(i, '0.0')
-		set_level(i, 64)  # Start at middle position
-		set_bg_color(i, gradient_colors[i])
-		set_bar_color(i, 'FFFFFF')  # Clean white bars
-		set_text_color(i, 'FFFFFF')  # White text for good contrast
-		set_border_color(i, 'FFFFFF')  # White borders
+		# set_level(i, 64)  # Start at middle position
+		# set_bg_color(i, gradient_colors[i])
+		# set_bar_color(i, 'FFFFFF')  # Clean white bars
+		# set_text_color(i, 'FFFFFF')  # White text for good contrast
+		# set_border_color(i, 'FFFFFF')  # White borders
 		set_channel(i, i+1)
   
 # Demo of controlling the device UI via serial commands
 # 15 seconds sequence with cool visual effects
-def demo_sequence():
+def demo_sequence_long():
     import math
     print("Starting demo sequence...")
     
@@ -254,6 +255,57 @@ def demo_sequence():
     init_values()
 
 
+# Change bar levels in a simple up-down sequence
+# 1. Group by 4 in a row, go from 0 to 127 and back to 0
+# 2. Group by 4 in a column, go from 0 to 127 and back to 0
+# 3. Change all simuletaneously from 0 to 127 and back to 0
+def demo_sequence_bars():
+    
+	# 1. Group by 4 in a row, go from 0 to 127 and back to 0
+	for group in range(4):
+		for level in range(0, 128, 2):
+			for i in range(group*4, group*4+4):
+				set_level(i, level)
+				set_value(i, str(level))
+				time.sleep(0.005)
+	
+ # for level in range(127, -1, -1):
+	# 	for i in range(group*4, group*4+4):
+	# 		set_level(i, level)
+	# 		set_value(i, str(level))
+	# 	time.sleep(0.04)
+    # time.sleep(0.2)
+
+    # 2. Group by 4 in a column, go from 0 to 127 and back to 0
+    # print("Bar demo: columns up-down")
+    # for col in range(4):
+    #     for level in range(0, 128, 1):
+    #         for i in range(col, 16, 4):
+    #             set_level(i, level)
+    #             set_value(i, str(level))
+    #         time.sleep(0.04)
+    #     for level in range(127, -1, -1):
+    #         for i in range(col, 16, 4):
+    #             set_level(i, level)
+    #             set_value(i, str(level))
+    #         time.sleep(0.04)
+    # time.sleep(0.2)
+
+    # 3. Change all simultaneously from 0 to 127 and back to 0
+    # print("Bar demo: all up-down")
+    # for level in range(0, 128, 1):
+    #     for i in range(16):
+    #         set_level(i, level)
+    #         set_value(i, str(level))
+    #     time.sleep(0.03)
+    # for level in range(127, -1, -1):
+    #     for i in range(16):
+    #         set_level(i, level)
+    #         set_value(i, str(level))
+    #     time.sleep(0.03)
+    # time.sleep(0.2)
+
+
 def test_methods():
     for i in range(16):
         # set_value(i, 100)
@@ -265,12 +317,11 @@ def test_methods():
         # set_channel(i, i+1)
   
 # Establish a serial connection with the device
-ser = serial.Serial('/dev/cu.usbmodem3962346234323', 576000)
+ser = serial.Serial(DEVICE_USB_PATH, 576000)
 init_values()
-demo_sequence()
+demo_sequence_bars()
 # test_methods()
 ser.close()
-
 print('parameters sent')
 
 
