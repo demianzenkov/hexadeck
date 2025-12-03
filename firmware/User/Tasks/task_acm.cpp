@@ -8,13 +8,12 @@
 #include "task_encoder.h"
 #include "main.h"
 #include "task_midi.h"
+#include "bootloader.h"
 
 // extern QueueHandle_t show_image_queue;
 // uint8_t pic_buffer[25604];
 
 ACM acm;
-
-void JumpToBootloader(void);
 
 void ACM::createTask()
 {
@@ -364,32 +363,4 @@ void ACM::parseInputBuffer(char *buffer)
 			CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
 		}
 	}
-}
-
-void JumpToBootloader(void)
-{
-	/* Disable all interrupts */
-	__disable_irq();
-	/* Set the clock to the default state */
-	HAL_RCC_DeInit();
-	/* Disable Systick timer */
-	SysTick->CTRL = 0;
-	/* Clear Interrupt Enable Register & Interrupt Pending Register */
-	for (uint8_t i = 0; i < (70 + 31u) / 32; i++)
-	{
-		NVIC->ICER[i] = 0xFFFFFFFF;
-		NVIC->ICPR[i] = 0xFFFFFFFF;
-	}
-	/* Re-enable all interrupts */
-	__enable_irq();
-	/* Set up the jump to boot loader address + 4 */
-	uint32_t jump_address = *(__IO uint32_t *)(0x1FFF0000 + 4);
-	/* Set the main stack pointer to the boot loader stack */
-	__set_MSP(*(uint32_t *)0x1FFF0000);
-	/* Call the function to jump to boot loader location */
-	void (*boot_load)(void) = (void (*)(void))(jump_address);
-	// remap memory
-	SYSCFG->MEMRMP = 0x01;
-	__enable_irq();
-	boot_load();
 }

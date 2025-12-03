@@ -9,8 +9,10 @@
 #include "cmsis_os.h"
 #include "stdio.h"
 #include "usbd_cdc_acm_if.h"
+#include "bootloader.h"
 
-// #define CONFIG_BUTTONS_CALIBRATION_ENABLED
+
+// #define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
 
 
 typedef struct {
@@ -19,7 +21,7 @@ typedef struct {
 
 
 // serial 005 has these median values
-/*
+
 const ButtonAdcMedian button_adc_medians[16] = {
 	// i*4+0, i*4+1, i*4+2, i*4+3 for i=0..3
 	{728}, // 0
@@ -39,12 +41,13 @@ const ButtonAdcMedian button_adc_medians[16] = {
 	{820}, // 14
 	{900}, // 15
 };
-*/
+
 // 729,697,694,693 - 
 // 769,733,732,730 - 
 // 828,787,787,786 - 
 // 894,848,848,846 - 
 // serial 002 has these median values
+/*
 const ButtonAdcMedian button_adc_medians[16] = {
 	// i*4+0, i*4+1, i*4+2, i*4+3 for i=0..3
 	{729}, // 0
@@ -64,6 +67,8 @@ const ButtonAdcMedian button_adc_medians[16] = {
 	{786}, // 14
 	{848}, // 15
 };
+*/
+
 static void TaskButtons_task(void const *arg);
 
 osThreadId buttonsTaskHandle;
@@ -76,9 +81,9 @@ volatile uint32_t adc_values[4] = {};
 volatile uint8_t data_sampled = 1;
 uint8_t button_state[16] = {};
 uint8_t prev_button_state[16] = {};
-uint32_t prev_buttons_pressed_time[16] = {};
 uint32_t button_changed_time[16] = {};
 uint8_t button_changed[16] = {};
+uint32_t bootloader_entry_start = 0;
 
 void TaskButtons_createTask() {
     buttons_ready_sem = xSemaphoreCreateBinary();
@@ -99,6 +104,26 @@ void TaskButtons_task(void const *arg) {
 			for(int i = 0; i < 16; i++) {
 				button_state[i] = 0;
 			}
+
+			// Check if ADC0.ch0 is 568 +-20 & ADC0.ch3 is 570 +-20 for 3 seconds to enter bootloader
+			if( (adc_values[0] >= (568 - 20)) && (adc_values[0] <= (568 + 20)) &&
+				(adc_values[3] >= (570 - 20)) && (adc_values[3] <= (570 + 20)) ) {
+
+				if(bootloader_entry_start == 0) {
+					bootloader_entry_start = now;
+				} else {
+					if((now - bootloader_entry_start) >= 3000) {
+						// Enter bootloader
+						CDC_Transmit(0, (uint8_t *)"Entering bootloader...\r\n", 25);
+						HAL_Delay(100);
+						JumpToBootloader();
+					}
+				}
+			} else {
+				// Reset timer
+				bootloader_entry_start = 0;
+			}
+
 			// Check each ADC channel for its 4 buttons using median ±20
 			for(int adc_idx = 0; adc_idx < 4; adc_idx++) {
 				uint32_t adc_val = adc_values[adc_idx];
@@ -113,7 +138,7 @@ void TaskButtons_task(void const *arg) {
 
 #ifdef CONFIG_BUTTONS_CALIBRATION_ENABLED
 			// Send ADC values to ACM once per second
-			if ((now - last_calib_send) > 1000) {
+			if ((now - last_calib_send) > 3000) {
 				char adc_msg[64];
 				int len = snprintf(adc_msg, sizeof(adc_msg), "ADC_BUTTONS: %lu,%lu,%lu,%lu\r\n", adc_values[0], adc_values[1], adc_values[2], adc_values[3]);
 				CDC_Transmit(0, (uint8_t *)adc_msg, len);
