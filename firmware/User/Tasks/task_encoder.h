@@ -7,14 +7,19 @@
 #define TASK_ENCODER_H_
 
 #include "main.h"
+#include "cmsis_os.h"
+#include "task_prototype.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-#define ENCODER_MIN_VALUE   0
-#define ENCODER_MAX_VALUE   127
+
+
+#define ENC_DEBOUNCE_HIGH_FILTER 50
+#define ENC_DEBOUNCE_LOW_FILTER 3000
+#define ENC_DEBOUNCE_CMD_FILTER pdMS_TO_TICKS(250)
 
 typedef struct {
 	uint8_t encoder_id;
@@ -22,15 +27,25 @@ typedef struct {
     uint8_t prev_state_a;
     uint8_t state_b;
     uint8_t prev_state_b;
-    uint8_t prev_state;
-    uint32_t ts;
-    uint32_t prev_ts;
-} encoder_ev_t;
+} encoder_state_t;
 
-extern uint8_t encoder_values[16];
-extern uint8_t encoder_max_values[16];
-void TaskEncoder_createTask();
+typedef struct {
+	bool increase;		// true - increase, false - decrease
+	uint8_t encoder_id;
+} encoder_event_t;
 
+
+class TaskEncoder : public TaskPrototype {
+public:
+	void createTask() override;
+private:
+	static void task(void const *arg);
+public:
+	QueueHandle_t encoder_state_queue;	// queue for interrupt events
+	encoder_state_t encoder_state[16] = {};
+};
+
+extern TaskEncoder task_encoder;
 
 #ifdef __cplusplus
 }

@@ -12,12 +12,14 @@ typedef struct _objects_t {
     lv_obj_t *panel_general;
     lv_obj_t *panel_channel;
     lv_obj_t *label_channel;
-    lv_obj_t *panel_text;
+    lv_obj_t *panel_name;
     lv_obj_t *label_name;
     lv_obj_t *bar_level;
     lv_obj_t *label_level;
-    lv_obj_t *label_level_min;
-    lv_obj_t *label_level_max;
+    lv_obj_t *panel_cc;
+    lv_obj_t *label_cc;
+    lv_obj_t *panel_range;
+    lv_obj_t *label_range;
 } objects_t;
 
 extern objects_t objects;

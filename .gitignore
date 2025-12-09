@@ -3,3 +3,4 @@ Debug/
 Release/
 .vscode/
 .idea/
+*.bin

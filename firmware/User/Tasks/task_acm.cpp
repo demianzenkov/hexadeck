@@ -4,43 +4,253 @@
  */
 
 #include "task_acm.h"
-#include "task_lvgl.h"
-#include "task_encoder.h"
+#include "task_os.h"
 #include "main.h"
 #include "task_midi.h"
 #include "bootloader.h"
 
-// extern QueueHandle_t show_image_queue;
-// uint8_t pic_buffer[25604];
 
 ACM acm;
 
 void ACM::createTask()
 {
-	acm_event_queue = xQueueCreate(16, sizeof(acm_event_t));
+	recv_data_queue = xQueueCreate(32, sizeof(acm_data_event_t));
+	send_data_queue = xQueueCreate(16, sizeof(acm_data_event_t));
 
-	osThreadDef(ACMTask, task, osPriorityNormal, 0, 1024);
-	ACMTaskHandle = osThreadCreate(osThread(ACMTask), this);
+	osThreadDef(ACMRecvTask, task_recv, osPriorityNormal, 0, 256);
+	task_handle = osThreadCreate(osThread(ACMRecvTask), this);
+
+	osThreadDef(ACMSendTask, task_send, osPriorityNormal, 0, 256);
+	task_send_handle = osThreadCreate(osThread(ACMSendTask), this);
 }
 
-void ACM::task(void const *arg)
+int ACM::sendData(uint8_t * data, size_t len)
+{
+	acm_data_event_t acm_ev = {};
+	if(len > sizeof(acm_ev.buffer)) {
+		return -1;
+	}
+	memcpy(acm_ev.buffer, data, len);
+	acm_ev.len = len;
+	if(xQueueSend(send_data_queue, &acm_ev, 0) != pdPASS) {
+		return -1;
+	}
+	return 0;
+}
+
+void ACM::parseInputBuffer(char *buffer)
+{
+	// Fast command parsing using pointer arithmetic and memcmp
+	if (buffer[0] != '/') {
+		sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		return;
+	}
+	acm_event_t acm_event = {};
+	char *cmd = buffer + 1; // skip initial '/'
+	if (memcmp(cmd, "set/name/", 9) == 0) {
+		cmd += 9;
+		uint8_t disp_id = atoi(cmd);
+		if ((disp_id == 0) || (disp_id > 16)) {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		cmd = strchr(cmd, '/');
+		if (cmd != NULL) {
+			cmd++;
+			int str_len = strlen(cmd);
+			if (str_len > 16) {
+				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+				return;
+			}
+			acm_event.type = ACM_EVENT_TYPE_SET_NAME;
+			acm_event.id = disp_id - 1;
+			memcpy(acm_event.data, cmd, str_len - 1);
+			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		}
+	}
+	
+	else if (memcmp(cmd, "set/value/", 10) == 0) {
+		cmd += 10;
+		uint8_t disp_id = atoi(cmd);
+		if ((disp_id == 0) || (disp_id > 16)) {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		cmd = strchr(cmd, '/');
+		if (cmd != NULL) {
+			cmd++;
+			int32_t level = atoi(cmd);
+			if ((level < 0) || (level > 127)) {
+				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+				return;
+			}
+			acm_event.type = ACM_EVENT_TYPE_SET_VALUE;
+			acm_event.id = disp_id - 1;
+			acm_event.data[0] = (uint8_t)level;
+			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			
+			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+			return;
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		}
+	}
+	
+	else if (memcmp(cmd, "set/channel/", 12) == 0) {
+		cmd += 12;
+		uint8_t disp_id = atoi(cmd);
+		if ((disp_id == 0) || (disp_id > 16)) {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		cmd = strchr(cmd, '/');
+		if (cmd != NULL) {
+			cmd++;
+			int32_t channel = atoi(cmd);
+			if (channel > 16) {
+				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+				return;
+			}
+			acm_event.type = ACM_EVENT_TYPE_SET_CHANNEL;
+			acm_event.id = disp_id - 1;
+			acm_event.data[0] = (uint8_t)channel;
+			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		}
+	}
+	
+	else if(memcmp(cmd, "set/cc/", 7) == 0) {
+		cmd += 7;
+		uint8_t disp_id = atoi(cmd);
+		if ((disp_id == 0) || (disp_id > 16)) {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		cmd = strchr(cmd, '/');
+		if (cmd != NULL) {
+			cmd++;
+			int32_t cc_number = atoi(cmd);
+			if ((cc_number < 0) || (cc_number > 127)) {
+				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+				return;
+			}
+			acm_event.type = ACM_EVENT_TYPE_SET_CC;
+			acm_event.id = disp_id - 1;
+			acm_event.data[0] = (uint8_t)cc_number;
+			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		}
+	}
+	
+	else if (memcmp(cmd, "set/range/", 10) == 0) {
+		cmd += 10;
+		uint8_t disp_id = atoi(cmd);
+		if ((disp_id == 0) || (disp_id > 16)) {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		cmd = strchr(cmd, '/');
+		if (cmd != NULL) {
+			cmd++;
+			int32_t max_level = atoi(cmd);
+			if ((max_level < 1) || (max_level > 127)) {
+				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+				return;
+			}
+			acm_event.type = ACM_EVENT_TYPE_SET_RANGE;
+			acm_event.id = disp_id - 1;
+			acm_event.data[0] = (uint8_t)max_level;
+			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+			return;
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		}
+	}
+	
+	else if (memcmp(cmd, "set/color/", 10) == 0) {
+		cmd += 10;
+		uint8_t selected_color_element = 0;
+		if(memcpy(cmd, "bg/", 3) == 0) {
+			cmd += 3;
+			selected_color_element = 1;
+		} else if(memcpy(cmd, "border/", 7) == 0) {
+			cmd += 7;
+			selected_color_element = 2;
+		} else if(memcpy(cmd, "text/", 5) == 0) {
+			cmd += 5;
+			selected_color_element = 3;
+		} else if(memcpy(cmd, "bar/", 4) == 0) {
+			cmd += 4;
+			selected_color_element = 4;
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		uint8_t disp_id = atoi(cmd);
+		if ((disp_id == 0) || (disp_id > 16)) {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			return;
+		}
+		cmd = strchr(cmd, '/');
+		if (cmd != NULL) {
+			cmd++;
+			uint32_t color_value = 0;
+			if (sscanf(cmd, "%6x", &color_value) == 1) {
+				uint8_t r = (color_value >> 16) & 0xFF;
+				uint8_t g = (color_value >> 8) & 0xFF;
+				uint8_t b = color_value & 0xFF;
+				acm_event.type = (acm_event_type_e)(ACM_EVENT_TYPE_SET_COLOR_BG + selected_color_element - 1);
+				acm_event.id = disp_id - 1;
+				acm_event.data[0] = r;
+				acm_event.data[1] = g;
+				acm_event.data[2] = b;
+				xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+				sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+			} else {
+				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+			}
+		} else {
+			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+		}
+	}
+	
+	else if (memcmp(cmd, "fw/update/", 10) == 0) {
+		// Firmware update command received
+		sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
+		HAL_Delay(100);
+		acm_event.type = ACM_EVENT_FIRMWARE_UPDATE;
+		xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+	}
+	else {
+		sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
+	}
+
+}
+
+
+void ACM::task_recv(void const *arg)
 {
 	ACM *p_this = (ACM *)arg;
 
-	acm_event_t acm_ev = {};
-	//	size_t packet_cnt = 0;
-	//	size_t img_size = 0;
+	acm_data_event_t acm_ev = {};
 
-	char command_string_buffer[512] = {0};
+	char command_string_buffer[128] = {0};
 	size_t command_string_len = 0;
 	while (1)
 	{
-		if (xQueueReceive(p_this->acm_event_queue, &acm_ev, portMAX_DELAY) == pdTRUE)
+		if(xQueueReceive(p_this->recv_data_queue, &acm_ev, portMAX_DELAY) == pdTRUE)
 		{
 			// Check if the buffer contains "\n" to indicate end of command
 			// If it doen't - accumulate the buffer
-			if (acm_ev.buffer[acm_ev.len - 1] != '\n')
-			{
+			if (acm_ev.buffer[acm_ev.len - 1] != '\n') {
 				// Accumulate the buffer
 				if (command_string_len + acm_ev.len < sizeof(command_string_buffer) - 1)
 				{
@@ -49,9 +259,8 @@ void ACM::task(void const *arg)
 					command_string_buffer[command_string_len] = '\0'; // Null-terminate the string
 					continue;										  // Wait for more data
 				}
-			}
-			else
-			{
+			} 
+			else {
 				// If the buffer ends with "\n", copy it to command_string_buffer
 				if (command_string_len + acm_ev.len < sizeof(command_string_buffer) - 1)
 				{
@@ -62,305 +271,19 @@ void ACM::task(void const *arg)
 				}
 				command_string_len = 0; // Reset command string length
 			}
-
-			// memcpy(pic_buffer+img_size, acm_ev.buffer, acm_ev.len);
-			// img_size += acm_ev.len;
-			// packet_cnt++;
-			// if(img_size >= sizeof(pic_buffer))
-			// {
-			//     show_img_t show_img;
-			//     show_img.display_id = 0;
-			//     show_img.img_buf = pic_buffer;
-			//     show_img.img_size = img_size;
-			//     xQueueSend(show_image_queue, &show_img, portMAX_DELAY);
-			//     img_size = 0;
-			//     packet_cnt = 0;
-			// }
 		}
 	}
 }
 
-void ACM::parseInputBuffer(char *buffer)
+void ACM::task_send(void const *arg)
 {
-	// Check string for commands
-	// "/set/name/x/y" - where x - display id, y - string value
-	if (buffer[0] == '/')
+	ACM *p_this = (ACM *)arg;
+
+	acm_data_event_t acm_ev = {};
+	while (1)
 	{
-		char *cmd = (char *)buffer;
-		if (strncmp(cmd, "/set/name/", 10) == 0)
-		{
-			cmd += 10; // skip "/set/name/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				ui.showName(disp_id, cmd);
-				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-			}
-			else
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-			}
-		}
-		else if (strncmp(cmd, "/set/level/", 11) == 0)
-		{
-			cmd += 11; // skip "/set/value/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				int32_t level = atoi(cmd);
-				if ((level < 0) || (level > 127))
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-					return;
-				}
-				ui.showBarLevel(disp_id, level);
-				encoder_values[disp_id] = level;
-				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-				return;
-			}
-			else
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-			}
-		}
-		else if (strncmp(cmd, "/set/value/", 11) == 0)
-		{
-			cmd += 11; // skip "/set/channel/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				int str_len = strlen(cmd);
-				if (str_len > 18)
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-					return;
-				}
-				ui.showValue(disp_id, cmd);
-				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-			}
-			else
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-			}
-		}
-		else if (strncmp(cmd, "/set/channel/", 13) == 0)
-		{
-			cmd += 13; // skip "/set/channel/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				int str_len = strlen(cmd);
-				if (str_len > 4)
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-					return;
-				}
-				ui.showChannel(disp_id, cmd);
-				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-			}
-			else
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-			}
-		}
-		else if (strncmp(cmd, "/set/range/", 11) == 0)
-		{
-			cmd += 11; // skip "/set/range/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				int32_t max_level = atoi(cmd);
-				if ((max_level < 1) || (max_level > 127))
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-					return;
-				}
-				encoder_max_values[disp_id] = max_level;
-				ui.changeBarRange(disp_id, max_level);
-
-				if (encoder_values[disp_id] > max_level)
-				{
-					encoder_values[disp_id] = max_level;
-
-					midi_event_t enc_midi_ev = {};
-					enc_midi_ev.message_type = MIDI_CC;
-					enc_midi_ev.channel = disp_id;
-					enc_midi_ev.note = MIDI_CC_MODULATION;
-					enc_midi_ev.value = encoder_values[disp_id];
-
-					ui.showBarLevel(disp_id, encoder_values[disp_id]);
-					TaskMIDI_sendEvent(&enc_midi_ev);
-				}
-				CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-				return;
-			}
-			else
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-			}
-		}
-		// /set/color/bg/x/ff0012 - where x - display id, 0xff - r, 0x00 - g, 0x12 - b
-		else if (strncmp(cmd, "/set/color/bg/", 14) == 0)
-		{
-			cmd += 14; // skip "/set/color/bg/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				uint32_t color_value = 0;
-				if (sscanf(cmd, "%6x", &color_value) == 1)
-				{
-					uint8_t r = (color_value >> 16) & 0xFF;
-					uint8_t g = (color_value >> 8) & 0xFF;
-					uint8_t b = color_value & 0xFF;
-					lv_color_t color = lv_color_make(r, g, b);
-					ui.showColor(disp_id, COLOR_ELEMENT_BACKGROUND, color);
-					CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-				}
-				else
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				}
-			}
-		}
-		else if (strncmp(cmd, "/set/color/border/", 18) == 0)
-		{
-			cmd += 18; // skip "/set/color/border/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				uint32_t color_value = 0;
-				if (sscanf(cmd, "%6x", &color_value) == 1)
-				{
-					uint8_t r = (color_value >> 16) & 0xFF;
-					uint8_t g = (color_value >> 8) & 0xFF;
-					uint8_t b = color_value & 0xFF;
-					lv_color_t color = lv_color_make(r, g, b);
-					ui.showColor(disp_id, COLOR_ELEMENT_BORDER, color);
-					CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-				}
-				else
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				}
-			}
-		}
-		else if (strncmp(cmd, "/set/color/text/", 16) == 0)
-		{
-			cmd += 16; // skip "/set/color/text/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				uint32_t color_value = 0;
-				if (sscanf(cmd, "%6x", &color_value) == 1)
-				{
-					uint8_t r = (color_value >> 16) & 0xFF;
-					uint8_t g = (color_value >> 8) & 0xFF;
-					uint8_t b = color_value & 0xFF;
-					lv_color_t color = lv_color_make(r, g, b);
-					ui.showColor(disp_id, COLOR_ELEMENT_TEXT, color);
-					CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-				}
-			}
-			else
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-			}
-		}
-		else if (strncmp(cmd, "/set/color/bar/", 15) == 0)
-		{
-			cmd += 15; // skip "/set/color/bar/"
-			uint8_t disp_id = atoi(cmd);
-			if (disp_id > 15)
-			{
-				CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				return;
-			}
-			cmd = strchr(cmd, '/');
-			if (cmd != NULL)
-			{
-				cmd++; // skip '/'
-				uint32_t color_value = 0;
-				if (sscanf(cmd, "%6x", &color_value) == 1)
-				{
-					uint8_t r = (color_value >> 16) & 0xFF;
-					uint8_t g = (color_value >> 8) & 0xFF;
-					uint8_t b = color_value & 0xFF;
-					lv_color_t color = lv_color_make(r, g, b);
-					ui.showColor(disp_id, COLOR_ELEMENT_BAR, color);
-					CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-				}
-				else
-				{
-					CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
-				}
-			}
-		}
-		else if (strncmp(cmd, "/fw/update/", 11) == 0)
-		{
-			// Firmware update command received
-			CDC_Transmit(0, (uint8_t *)"OK\n\r", 4);
-			HAL_Delay(100);
-			JumpToBootloader();
-		}
-		else
-		{
-			CDC_Transmit(0, (uint8_t *)"FAIL\n\r", 6);
+		if(xQueueReceive(p_this->send_data_queue, &acm_ev, portMAX_DELAY) == pdTRUE) {
+			CDC_Transmit(0, acm_ev.buffer, acm_ev.len);
 		}
 	}
 }

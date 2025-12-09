@@ -104,7 +104,7 @@ uint32_t Write_Index[NUMBER_OF_CDC]; /* keep track of received data over UART */
 uint32_t Read_Index[NUMBER_OF_CDC];  /* keep track of sent data to USB */
 
 // extern QueueHandle_t acm_event_queue;
-// static acm_event_t acm_ev;
+// static acm_data_event_t acm_ev;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -424,10 +424,10 @@ static int8_t CDC_Receive(uint8_t cdc_ch, uint8_t *Buf, uint32_t *Len)
   /* USER CODE BEGIN 6 */
   //HAL_UART_Transmit_DMA(CDC_CH_To_UART_Handle(cdc_ch), Buf, *Len);
 //  CDC_Transmit(cdc_ch, Buf, *Len); // echo back on same channel
-	acm_event_t acm_ev = {};
+	acm_data_event_t acm_ev = {};
     acm_ev.len = *Len;
     memcpy(acm_ev.buffer, Buf, *Len);
-    if(xQueueSendFromISR(acm.acm_event_queue, &acm_ev, 0) != pdPASS) {
+    if(xQueueSendFromISR(acm.recv_data_queue, &acm_ev, 0) != pdPASS) {
         return (USBD_OK);
     }
 

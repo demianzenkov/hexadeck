@@ -12,34 +12,40 @@
 #include "bootloader.h"
 
 
-// #define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
+//#define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
 
+// Serial 002
+// #define DFU_COMBO_ADC_CH0  568
+// #define DFU_COMBO_ADC_CH4  570
+
+// Serial 005
+#define DFU_COMBO_ADC_CH0  600
+#define DFU_COMBO_ADC_CH3  560
 
 typedef struct {
 	uint16_t median;
 } ButtonAdcMedian;
 
 
-// serial 005 has these median values
 
+// serial 005 has these median values
 const ButtonAdcMedian button_adc_medians[16] = {
-	// i*4+0, i*4+1, i*4+2, i*4+3 for i=0..3
-	{728}, // 0
-	{770}, // 1
-	{820}, // 2
-	{900}, // 3
-	{728}, // 4
-	{770}, // 5
-	{820}, // 6
-	{900}, // 7
-	{728}, // 8
-	{770}, // 9
-	{820}, // 10
-	{900}, // 11
-	{728}, // 12
-	{770}, // 13
-	{820}, // 14
-	{900}, // 15
+	{716}, // 0
+	{755}, // 1
+	{811}, // 2
+	{875}, // 3
+	{695}, // 4
+	{733}, // 5
+	{789}, // 6
+	{848}, // 7
+	{696}, // 8
+	{734}, // 9
+	{786}, // 10
+	{849}, // 11
+	{698}, // 12
+	{734}, // 13
+	{790}, // 14
+	{852}, // 15
 };
 
 // 729,697,694,693 - 
@@ -69,50 +75,40 @@ const ButtonAdcMedian button_adc_medians[16] = {
 };
 */
 
-static void TaskButtons_task(void const *arg);
-
-osThreadId buttonsTaskHandle;
-osSemaphoreId buttons_ready_sem;
+Buttons buttons;
 extern ADC_HandleTypeDef hadc1;
 
-volatile uint32_t adc_counter = 0;
-uint8_t adc_i = 0;
-volatile uint32_t adc_values[4] = {};
-volatile uint8_t data_sampled = 1;
-uint8_t button_state[16] = {};
-uint8_t prev_button_state[16] = {};
-uint32_t button_changed_time[16] = {};
-uint8_t button_changed[16] = {};
-uint32_t bootloader_entry_start = 0;
 
-void TaskButtons_createTask() {
+void Buttons::createTask() {
     buttons_ready_sem = xSemaphoreCreateBinary();
 
-    osThreadDef(buttonsTask, TaskButtons_task, osPriorityNormal, 0, 256);
-	buttonsTaskHandle = osThreadCreate(osThread(buttonsTask), NULL);
+    osThreadDef(buttonsTask, task, osPriorityNormal, 0, 256);
+	task_handle = osThreadCreate(osThread(buttonsTask), this);
 }
 
 
-void TaskButtons_task(void const *arg) {
+void Buttons::task(void const *arg)
+{
+	Buttons *p_this = (Buttons *)arg;
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_values, 4);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)p_this->adc_values, 4);
 	uint32_t last_calib_send = 0;
 	while (1) {
-		if(xSemaphoreTake(buttons_ready_sem, portMAX_DELAY) == pdTRUE) {
+		if(xSemaphoreTake(p_this->buttons_ready_sem, portMAX_DELAY) == pdTRUE) {
 			uint32_t now = HAL_GetTick();
 			// Reset button states
 			for(int i = 0; i < 16; i++) {
-				button_state[i] = 0;
+				p_this->button_state[i] = 0;
 			}
 
 			// Check if ADC0.ch0 is 568 +-20 & ADC0.ch3 is 570 +-20 for 3 seconds to enter bootloader
-			if( (adc_values[0] >= (568 - 20)) && (adc_values[0] <= (568 + 20)) &&
-				(adc_values[3] >= (570 - 20)) && (adc_values[3] <= (570 + 20)) ) {
+			if( (p_this->adc_values[0] >= (DFU_COMBO_ADC_CH0 - 20)) && (p_this->adc_values[0] <= (DFU_COMBO_ADC_CH0 + 20)) &&
+				(p_this->adc_values[3] >= (DFU_COMBO_ADC_CH3 - 20)) && (p_this->adc_values[3] <= (DFU_COMBO_ADC_CH3 + 20)) ) {
 
-				if(bootloader_entry_start == 0) {
-					bootloader_entry_start = now;
+				if(p_this->bootloader_entry_start == 0) {
+					p_this->bootloader_entry_start = now;
 				} else {
-					if((now - bootloader_entry_start) >= 3000) {
+					if((now - p_this->bootloader_entry_start) >= 3000) {
 						// Enter bootloader
 						CDC_Transmit(0, (uint8_t *)"Entering bootloader...\r\n", 25);
 						HAL_Delay(100);
@@ -121,17 +117,17 @@ void TaskButtons_task(void const *arg) {
 				}
 			} else {
 				// Reset timer
-				bootloader_entry_start = 0;
+				p_this->bootloader_entry_start = 0;
 			}
 
 			// Check each ADC channel for its 4 buttons using median ±20
 			for(int adc_idx = 0; adc_idx < 4; adc_idx++) {
-				uint32_t adc_val = adc_values[adc_idx];
+				uint32_t adc_val = p_this->adc_values[adc_idx];
 				for(int btn = 0; btn < 4; btn++) {
 					int btn_idx = adc_idx * 4 + btn;
 					uint16_t median = button_adc_medians[btn_idx].median;
-					if(adc_val >= (median - 20) && adc_val <= (median + 20)) {
-						button_state[btn_idx] = 1;
+					if((adc_val >= (median - 20)) && (adc_val <= (median + 20))) {
+						p_this->button_state[btn_idx] = 1;
 					}
 				}
 			}
@@ -140,7 +136,7 @@ void TaskButtons_task(void const *arg) {
 			// Send ADC values to ACM once per second
 			if ((now - last_calib_send) > 3000) {
 				char adc_msg[64];
-				int len = snprintf(adc_msg, sizeof(adc_msg), "ADC_BUTTONS: %lu,%lu,%lu,%lu\r\n", adc_values[0], adc_values[1], adc_values[2], adc_values[3]);
+				int len = snprintf(adc_msg, sizeof(adc_msg), "ADC_BUTTONS: %lu,%lu,%lu,%lu\r\n", p_this->adc_values[0], p_this->adc_values[1], p_this->adc_values[2], p_this->adc_values[3]);
 				CDC_Transmit(0, (uint8_t *)adc_msg, len);
 				last_calib_send = now;
 			}
@@ -148,18 +144,17 @@ void TaskButtons_task(void const *arg) {
 
 			// ...existing code...
 			for(int i=0; i < 16; i++) {
-				if((button_state[i] != prev_button_state[i]) && (!button_changed[i])) {
-					button_changed[i] = 1;
-					button_changed_time[i] = now;
-				} else if (button_state[i] == prev_button_state[i]){
-					button_changed[i] = 0;
+				if((p_this->button_state[i] != p_this->prev_button_state[i]) && (!p_this->button_changed[i])) {
+					p_this->button_changed[i] = 1;
+					p_this->button_changed_time[i] = now;
+				} else if (p_this->button_state[i] == p_this->prev_button_state[i]){
+					p_this->button_changed[i] = 0;
 				}
 			}
 			for (int i = 0; i < 16; i++) {
-				if (button_changed[i] && ((now - button_changed_time[i]) > 50)) {
-
+				if (p_this->button_changed[i] && ((now - p_this->button_changed_time[i]) > 50)) {
 					midi_event_t midi_ev;
-					if (button_state[i] == 0) {
+					if (p_this->button_state[i] == 0) {
 						midi_ev.message_type = MIDI_NOTE_OFF;
 						midi_ev.value = 0;
 					} else {
@@ -168,15 +163,15 @@ void TaskButtons_task(void const *arg) {
 					}
 					midi_ev.channel = i;
 					midi_ev.note = 0;
-					prev_button_state[i] = button_state[i];
-					TaskMIDI_sendEvent(&midi_ev);
+					p_this->prev_button_state[i] = p_this->button_state[i];
+					task_midi.sendEvent(&midi_ev);
 				}
 			}
-			HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_values, 4);
+			HAL_ADC_Start_DMA(&hadc1, (uint32_t *)p_this->adc_values, 4);
 		}
 	}
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-    xSemaphoreGiveFromISR(buttons_ready_sem, NULL);
+    xSemaphoreGiveFromISR(buttons.buttons_ready_sem, NULL);
 }

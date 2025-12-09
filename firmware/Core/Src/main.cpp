@@ -28,11 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "task_buttons.h"
-#include "task_encoder.h"
-#include "task_lvgl.h"
-#include "task_midi.h"
-#include "task_acm.h"
+#include "task_os.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -109,15 +105,10 @@ extern "C" int main(void)
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim6);
-
-//  MX_USB_DEVICE_Init();
   HAL_TIM_Base_Start(&htim3);
 
-  ui.createTask();
-  TaskMIDI_createTask();
-  TaskButtons_createTask();
-  TaskEncoder_createTask();
-  acm.createTask();
+
+  task_os.createTask();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
