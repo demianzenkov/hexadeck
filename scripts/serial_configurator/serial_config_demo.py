@@ -2,36 +2,48 @@
 import serial
 import time
 
-DEVICE_USB_PATH = '/dev/cu.usbmodem3961348334323'
-SLEEP_TIMEOUT = 0.005
+DEVICE_USB_PATH = '/dev/cu.usbmodem3962346234323'
+
 ser = None
+fail_response_counter = 0
+def wait_for_response(timeout=30.0):
+    """Wait for OK or FAIL response from the device."""
+    start_time = time.time()
+    response = b''
+    while time.time() - start_time < timeout:
+        if ser.in_waiting:
+            response += ser.read(ser.in_waiting)
+            if b'OK' in response:
+                return 'OK'
+            if b'FAIL' in response:
+                global fail_response_counter
+                fail_response_counter += 1
+                print('fail: ', fail_response_counter)
+                return 'FAIL'
+        # time.sleep(0.001)
+    return None
 
 def set_value(disp, value):
-	message = '/set/value/' + str(disp) + '/' + str(value) + '\n'
-	ser.write(message.encode())
-	time.sleep(SLEEP_TIMEOUT)
- 
-
-def set_level(disp, level):
-    message = '/set/level/' + str(disp) + '/' + str(level) + '\n'
+    message = '/set/value/' + str(disp) + '/' + str(value) + '\n'
+    print(f'Sending: {message.strip()}')
     ser.write(message.encode())
-    time.sleep(SLEEP_TIMEOUT)
+    return wait_for_response()
 
 def set_channel(disp, channel):
     message = '/set/channel/' + str(disp) + '/' + str(channel) + '\n'
     ser.write(message.encode())
-    time.sleep(SLEEP_TIMEOUT)
+    return wait_for_response()
 
 def set_name(disp, name):
-	message = '/set/name/' + str(disp) + '/' + name + '\n'
-	ser.write(message.encode())
-	time.sleep(SLEEP_TIMEOUT)
+    message = '/set/name/' + str(disp) + '/' + name + '\n'
+    ser.write(message.encode())
+    return wait_for_response()
 
 def set_color(disp, element, color):
     message = '/set/color/' + str(element) + '/' + str(disp) + '/' + color + '\n'
     ser.write(message.encode())
-    time.sleep(SLEEP_TIMEOUT)
-    
+    return wait_for_response()
+
 def set_border_color(disp, color):
     return set_color(disp, 'border', color)
 
@@ -45,7 +57,7 @@ def set_bg_color(disp, color):
     return set_color(disp, 'bg', color)
 
 
-def init_values():
+def init_names():
 	# Pretty gradient colors for each display
 	gradient_colors = [
 		'1A1A2E', '16213E', '0F3460', '533483',  # Dark blue to purple
@@ -63,14 +75,14 @@ def init_values():
 	]
 	
 	for i in range(0, 16):
-		set_name(i, instrument_names[i])
-		set_value(i, '0.0')
+		set_name(i+1, instrument_names[i])
+		# set_value(i+1, '0.0')
 		# set_level(i, 64)  # Start at middle position
 		# set_bg_color(i, gradient_colors[i])
 		# set_bar_color(i, 'FFFFFF')  # Clean white bars
 		# set_text_color(i, 'FFFFFF')  # White text for good contrast
 		# set_border_color(i, 'FFFFFF')  # White borders
-		set_channel(i, i+1)
+		# set_channel(i+1, i+1)
   
 # Demo of controlling the device UI via serial commands
 # 15 seconds sequence with cool visual effects
@@ -263,11 +275,12 @@ def demo_sequence_bars():
     
 	# 1. Group by 4 in a row, go from 0 to 127 and back to 0
 	for group in range(4):
-		for level in range(0, 128, 2):
+		for level in range(1, 128, 3):
 			for i in range(group*4, group*4+4):
-				set_level(i, level)
-				set_value(i, str(level))
-				time.sleep(0.005)
+				print(f'Set display {i+1} to value {level}')
+				set_value(i+1, str(level))
+				time.sleep(0.05)
+				
 	
  # for level in range(127, -1, -1):
 	# 	for i in range(group*4, group*4+4):
@@ -318,7 +331,7 @@ def test_methods():
   
 # Establish a serial connection with the device
 ser = serial.Serial(DEVICE_USB_PATH, 576000)
-init_values()
+# init_names()
 demo_sequence_bars()
 # test_methods()
 ser.close()

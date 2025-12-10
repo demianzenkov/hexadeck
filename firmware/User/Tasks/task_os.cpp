@@ -14,8 +14,8 @@ TaskOS::TaskOS()
 {
 	for (uint8_t i = 0; i < 16; i++)
 	{
-		module_states[i].channel = MIDI_DEFAULT_CHANNEL;	// Channel
-		module_states[i].cc = i;							// MIDI_CC_MODULATION
+		module_states[i].channel = MIDI_DEFAULT_CHANNEL;	// channel
+		module_states[i].cc = i;							// cc number
 		module_states[i].min_value = ENCODER_DEFAULT_MIN_VALUE;
 		module_states[i].max_value = ENCODER_DEFAULT_MAX_VALUE;
 		module_states[i].current_value = ENCODER_DEFAULT_VALUE;
@@ -28,6 +28,8 @@ void TaskOS::createTask()
 	encoder_event_queue = xQueueCreate(32, sizeof(encoder_event_t));
 	acm_event_queue = xQueueCreate(16, sizeof(acm_event_t));
 	midi_input_event_queue = xQueueCreate(32, sizeof(midi_event_t));
+	midi_sysex_input_event_queue = xQueueCreate(8, sizeof(midi_sysex_event_t));
+	button_event_queue = xQueueCreate(8, sizeof(button_event_t));
 	
 	ui.createTask();
 	task_midi.createTask();
@@ -47,6 +49,8 @@ void TaskOS::task(void const *arg)
 	encoder_event_t encoder_event;
 	acm_event_t acm_event;
 	midi_event_t midi_input_ev;
+	midi_sysex_event_t sysex_input_ev;
+	button_event_t button_ev;
 	while (1)
 	{
 		if(xQueueReceive(p_this->encoder_event_queue, &encoder_event, 0) == pdTRUE) {
@@ -93,8 +97,6 @@ void TaskOS::task(void const *arg)
 							task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
 							// Update UI
 							ui.setValue(acm_event.id, module_state->current_value);
-							// TODO: show string value
-							// ui.setValue(acm_event.id, std::to_string(module_state->current_value).c_str());
 						}
 					}
 					break;
@@ -174,8 +176,19 @@ void TaskOS::task(void const *arg)
 			}
 		}
 		
+		if(xQueueReceive(p_this->button_event_queue, &button_ev, 0) == pdTRUE) {
+			// Process button events, CC-102..CC-119, values 0/127
+			if(button_ev.button_id < 16) {
+				uint8_t cc_number = 102 + button_ev.button_id;
+				uint8_t cc_value = button_ev.state ? 127 : 0;
+				// Send MIDI CC event
+				task_midi.sendMidiCC(0, cc_number, cc_value);
+			}
+		}
+
 		if(xQueueReceive(p_this->midi_input_event_queue, &midi_input_ev, 0) == pdTRUE) {
-			if(midi_input_ev.note == MIDI_CC_MODULATION) {
+			vTaskDelay(0);
+			// if(midi_input_ev.note == MIDI_MSG_CC_MODULATION) {
 				// TODO: process input MIDI CC event
 				// if(midi_ev.channel <= 16) {
 				// 	if(midi_ev.value > encoder_max_values[midi_ev.channel]) {
@@ -184,9 +197,136 @@ void TaskOS::task(void const *arg)
 				// 	ui.showBarLevel(midi_ev.channel, midi_ev.value);
 				// 	task_encoder.encoder_values[midi_ev.channel] = midi_ev.value;
 				// }
-			}
+			// }
 		}
 		
+		if(xQueueReceive(p_this->midi_sysex_input_event_queue, &sysex_input_ev, 0) == pdTRUE) {
+			if(sysex_input_ev.len == 0) {
+				continue;
+			}
+			switch(sysex_input_ev.buffer[0]) {
+				case MIDI_SYS_SET_NAME: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						memset(p_this->module_states[id].name, 0, sizeof(p_this->module_states[id].name));
+						memcpy((char *)p_this->module_states[id].name, &sysex_input_ev.buffer[2], sysex_input_ev.len - 2);
+						ui.setName(id, (const char *)p_this->module_states[id].name);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_VALUE: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						module_state_t * module_state = &p_this->module_states[id];
+						uint8_t value = sysex_input_ev.buffer[2];
+						if(	(value >= module_state->min_value) && 
+						(value <= module_state->max_value)) {
+							module_state->current_value = acm_event.data[0];
+							// Send MIDI CC event
+							task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
+							// Update UI
+							ui.setValue(acm_event.id, module_state->current_value);
+						}
+					}
+					break;
+				}
+				case MIDI_SYS_SET_CHANNEL: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						module_state_t * module_state = &p_this->module_states[id];
+						uint8_t channel = sysex_input_ev.buffer[2];
+						if((channel >= 1) && (channel <= 16)) {
+							module_state->channel = channel;
+							ui.setChannel(id, module_state->channel);
+						}
+					}
+					break;
+				}
+				case MIDI_SYS_SET_CC: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						module_state_t * module_state = &p_this->module_states[id];
+						uint8_t cc = sysex_input_ev.buffer[2];
+						if(cc <= 127) {
+							module_state->cc = cc;
+							ui.setCC(id, module_state->cc);
+						}
+					}
+					break;
+				}
+				case MIDI_SYS_SET_RANGE: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						module_state_t * module_state = &p_this->module_states[id];
+						uint8_t max_level = sysex_input_ev.buffer[2];
+						if((max_level >= module_state->min_value) && (max_level <= 127)) {
+							module_state->max_value = max_level;
+							ui.setRange(id, module_state->max_value);
+							// Adjust current value if needed
+							if(module_state->current_value > module_state->max_value) {
+								module_state->current_value = module_state->max_value;
+								// Send MIDI CC event
+								task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
+								// Update UI
+								ui.setValue(id, module_state->current_value);
+							}
+						}
+					}
+					break;
+				}
+				case MIDI_SYS_SET_COLOR_BG: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						// Reconstruct 8-bit RGB from two MIDI bytes per color
+						uint8_t r = sysex_input_ev.buffer[2] | (sysex_input_ev.buffer[3] << 7);
+						uint8_t g = sysex_input_ev.buffer[4] | (sysex_input_ev.buffer[5] << 7);
+						uint8_t b = sysex_input_ev.buffer[6] | (sysex_input_ev.buffer[7] << 7);
+						lv_color_t color = lv_color_make(r, g, b);
+						ui.setColor(id, COLOR_ELEMENT_BACKGROUND, color);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_COLOR_BORDER: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t r = sysex_input_ev.buffer[2] | (sysex_input_ev.buffer[3] << 7);
+						uint8_t g = sysex_input_ev.buffer[4] | (sysex_input_ev.buffer[5] << 7);
+						uint8_t b = sysex_input_ev.buffer[6] | (sysex_input_ev.buffer[7] << 7);
+						lv_color_t color = lv_color_make(r, g, b);
+						ui.setColor(id, COLOR_ELEMENT_BORDER, color);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_COLOR_TEXT: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t r = sysex_input_ev.buffer[2] | (sysex_input_ev.buffer[3] << 7);
+						uint8_t g = sysex_input_ev.buffer[4] | (sysex_input_ev.buffer[5] << 7);
+						uint8_t b = sysex_input_ev.buffer[6] | (sysex_input_ev.buffer[7] << 7);
+						lv_color_t color = lv_color_make(r, g, b);
+						ui.setColor(id, COLOR_ELEMENT_TEXT, color);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_COLOR_BAR: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {	
+						uint8_t r = sysex_input_ev.buffer[2] | (sysex_input_ev.buffer[3] << 7);
+						uint8_t g = sysex_input_ev.buffer[4] | (sysex_input_ev.buffer[5] << 7);
+						uint8_t b = sysex_input_ev.buffer[6] | (sysex_input_ev.buffer[7] << 7);
+						lv_color_t color = lv_color_make(r, g, b);
+						ui.setColor(id, COLOR_ELEMENT_BAR, color);
+					}
+					break;
+				}
+				case MIDI_SYS_FIRMWARE_UPDATE: {
+					JumpToBootloader();
+					break;
+				}
+				default:
+					break;
+			}
+		}
 		vTaskDelay(0);
 	}
 }

@@ -30,7 +30,7 @@ void TaskMIDI::createTask() {
 int TaskMIDI::sendMidiCC(uint8_t ch, uint8_t cc, uint8_t value)
 {
 	midi_event_t midi_ev = {};
-	midi_ev.message_type = MIDI_CC;
+	midi_ev.message_type = MIDI_MSG_TYPE_CC;
 	midi_ev.channel = ch;
 	midi_ev.note = cc;
 	midi_ev.value = value;
@@ -46,43 +46,118 @@ int TaskMIDI::sendEvent(midi_event_t * ev) {
     return 0;
 }
 
+int TaskMIDI::parseSysexMessage(uint8_t * data_buffer, size_t len, midi_sysex_event_t * out_sysex_ev) {
+	// Universal SysEx parser for USB MIDI packets
+	if (!data_buffer || !out_sysex_ev || len == 0) {
+		return -1;
+	}
+
+	out_sysex_ev->len = 0;
+	bool sysex_start_skipped = false;
+
+	for (size_t i = 0; i + 3 < len; i += 4) {
+		uint8_t cin = data_buffer[i] & 0x0F;
+		int data_bytes = 0;
+		switch (cin) {
+			case 0x4: data_bytes = 3; break; // SysEx start/continue (3 bytes)
+			case 0x5: data_bytes = 1; break; // SysEx ends with 1 byte
+			case 0x6: data_bytes = 2; break; // SysEx ends with 2 bytes
+			case 0x7: data_bytes = 3; break; // SysEx ends with 3 bytes
+			default: data_bytes = 3; break; // Defensive: treat as 3
+		}
+		for (int j = 1; j <= data_bytes; ++j) {
+			uint8_t val = data_buffer[i + j];
+			if (!sysex_start_skipped && val == MIDI_MSG_STATUS_SYSEX_START) {
+				sysex_start_skipped = true;
+				continue;
+			}
+			// Only treat 0xF7 as end if this is a SysEx end packet (CIN 0x5, 0x6, 0x7) and this is the last data byte(s)
+			bool is_sysex_end_packet = (cin == 0x5 || cin == 0x6 || cin == 0x7);
+			bool is_last_data_byte = (j == data_bytes);
+			if (is_sysex_end_packet && is_last_data_byte && val == MIDI_MSG_STATUS_SYSEX_END) {
+				// Do not include this 0xF7 in buffer, stop parsing
+				return 0;
+			}
+			if (out_sysex_ev->len < sizeof(out_sysex_ev->buffer)) {
+				out_sysex_ev->buffer[out_sysex_ev->len++] = val;
+			} else {
+				return -2; // Buffer overflow
+			}
+		}
+	}
+
+	return 0;
+}
+
 void TaskMIDI::task(void const *arg)
 {
 	TaskMIDI *p_this = (TaskMIDI *)arg;
     midi_event_t midi_ev = {};
 	midi_data_ev_t midi_data_ev = {};
 
-	uint8_t usb_midi_report[4];
-
 
 	MX_USB_DEVICE_Init();
 	while (1) {
         if(xQueueReceive(p_this->midi_output_queue, &midi_ev, 0) == pdTRUE) {
+			if(midi_ev.message_type == MIDI_MSG_TYPE_CC) {
+				uint8_t usb_midi_report[4];
+				usb_midi_report[0] = (midi_ev.message_type >> 4) & 0x0F;
+				usb_midi_report[1] = midi_ev.message_type | (midi_ev.channel & 0x0F);
+				usb_midi_report[2] = midi_ev.note;
+				usb_midi_report[3] = midi_ev.value;
+				while (MIDI_GetState() != MIDI_IDLE) {
+					continue;
+				};
+				MIDI_SendReport(usb_midi_report, 4);
+			}
             // Construct USB MIDI packet with correct Code Index Number (CIN)
             // Cable Number = 0, CIN = message_type upper 4 bits
-            usb_midi_report[0] = (midi_ev.message_type >> 4) & 0x0F;
-            usb_midi_report[1] = midi_ev.message_type | (midi_ev.channel & 0x0F);
-            usb_midi_report[2] = midi_ev.note;
-            usb_midi_report[3] = midi_ev.value;
-            while (MIDI_GetState() != MIDI_IDLE) {
-                continue;
-            };
-            MIDI_SendReport(usb_midi_report, 4);
         }
 		
 		if(xQueueReceive(p_this->midi_data_input_queue, &midi_data_ev, 0) == pdTRUE) {
-			if(midi_data_ev.len != 4) {
-				continue;
-			}
+			// Process received MIDI data
 			while (MIDI_GetState() != MIDI_IDLE) {
                 continue;
             };
 			midi_event_t midi_ev;
-			midi_ev.message_type = midi_data_ev.buffer[1] & 0xF0;
-			midi_ev.channel = midi_data_ev.buffer[1] & 0x0F;
-			midi_ev.note = midi_data_ev.buffer[2];
-			midi_ev.value = midi_data_ev.buffer[3];
+			uint8_t midi_cable_num = (midi_data_ev.buffer[0] >> 4) & 0x0F;
+			uint8_t midi_cin = midi_data_ev.buffer[0] & 0x0F;
 
+			midi_ev.message_type = midi_data_ev.buffer[1] & 0xF0;
+			switch(midi_ev.message_type) {
+				case MIDI_MSG_TYPE_NOTE_OFF:
+					break;
+				case MIDI_MSG_TYPE_NOTE_ON:
+					break;
+				case MIDI_MSG_TYPE_POLY_AT:
+					break;
+				case MIDI_MSG_TYPE_CC: {
+					midi_ev.channel = midi_data_ev.buffer[1] & 0x0F;
+					midi_ev.note = midi_data_ev.buffer[2];
+					midi_ev.value = midi_data_ev.buffer[3];
+					break;
+				}
+				case MIDI_MSG_TYPE_PC:
+					break;
+				case MIDI_MSG_TYPE_CH_AT:
+					break;
+				case MIDI_MSG_TYPE_PW:
+					break;
+				case MIDI_MSG_TYPE_SYS: {
+					if(midi_data_ev.buffer[1] == MIDI_MSG_STATUS_SYSEX_START) {
+						midi_sysex_event_t sysex_ev = {};
+						if(p_this->parseSysexMessage(midi_data_ev.buffer, midi_data_ev.len, &sysex_ev) == 0) {
+							xQueueSend(task_os.midi_sysex_input_event_queue, &sysex_ev, 0);
+						}
+					}
+					continue;
+				}
+
+				default:
+					// Unsupported message type
+					continue;
+			}
+			
 			xQueueSend(task_os.midi_input_event_queue, &midi_ev, 0);
 		}
 

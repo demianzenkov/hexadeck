@@ -17,7 +17,7 @@
 #define ENCODER_DEFAULT_MAX_VALUE   127
 #define ENCODER_DEFAULT_STEP   		1
 
-#define MIDI_DEFAULT_CHANNEL		1
+#define MIDI_DEFAULT_CHANNEL		0	// Channel - 1
 
 
 #ifdef __cplusplus
@@ -46,8 +46,10 @@ private:
 
 public:
 	QueueHandle_t encoder_event_queue;
+	QueueHandle_t button_event_queue;
 	QueueHandle_t acm_event_queue;
 	QueueHandle_t midi_input_event_queue;
+	QueueHandle_t midi_sysex_input_event_queue;
 	
 	module_state_t module_states[16];
 

@@ -222,7 +222,7 @@ void ACM::parseInputBuffer(char *buffer)
 		}
 	}
 	
-	else if (memcmp(cmd, "fw/update/", 10) == 0) {
+	else if (memcmp(cmd, "fw/update", 9) == 0) {
 		// Firmware update command received
 		sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 		HAL_Delay(100);

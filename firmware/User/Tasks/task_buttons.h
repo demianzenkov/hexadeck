@@ -14,6 +14,10 @@
 extern "C" {
 #endif
 
+typedef struct {
+	uint8_t button_id;
+	uint8_t state;
+} button_event_t;
 
 class Buttons : public TaskPrototype {
 public:

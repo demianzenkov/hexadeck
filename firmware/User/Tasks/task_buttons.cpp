@@ -4,7 +4,7 @@
  */
 
 #include "task_buttons.h"
-#include "task_midi.h"
+#include "task_os.h"
 #include "main.h"
 #include "cmsis_os.h"
 #include "stdio.h"
@@ -12,7 +12,7 @@
 #include "bootloader.h"
 
 
-//#define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
+#define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
 
 // Serial 002
 // #define DFU_COMBO_ADC_CH0  568
@@ -30,13 +30,13 @@ typedef struct {
 
 // serial 005 has these median values
 const ButtonAdcMedian button_adc_medians[16] = {
-	{716}, // 0
-	{755}, // 1
-	{811}, // 2
-	{875}, // 3
+	{737}, // 0
+	{778}, // 1
+	{838}, // 2
+	{906}, // 3
 	{695}, // 4
 	{733}, // 5
-	{789}, // 6
+	{812}, // 6
 	{848}, // 7
 	{696}, // 8
 	{734}, // 9
@@ -153,18 +153,11 @@ void Buttons::task(void const *arg)
 			}
 			for (int i = 0; i < 16; i++) {
 				if (p_this->button_changed[i] && ((now - p_this->button_changed_time[i]) > 50)) {
-					midi_event_t midi_ev;
-					if (p_this->button_state[i] == 0) {
-						midi_ev.message_type = MIDI_NOTE_OFF;
-						midi_ev.value = 0;
-					} else {
-						midi_ev.message_type = MIDI_NOTE_ON;
-						midi_ev.value = 1;
-					}
-					midi_ev.channel = i;
-					midi_ev.note = 0;
+					button_event_t button_ev;
+					button_ev.button_id = i;
+					button_ev.state = p_this->button_state[i];
+					xQueueSend(task_os.button_event_queue, &button_ev, 0);
 					p_this->prev_button_state[i] = p_this->button_state[i];
-					task_midi.sendEvent(&midi_ev);
 				}
 			}
 			HAL_ADC_Start_DMA(&hadc1, (uint32_t *)p_this->adc_values, 4);
