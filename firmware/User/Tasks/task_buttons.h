@@ -14,7 +14,15 @@
 extern "C" {
 #endif
 
+
+typedef enum {
+	BUTTON_EVENT_SINGLE_PRESS = 0,
+	BUTTON_EVENT_CORNERS_HOLD,
+	BUTTON_EVENT_CENTRAL_QUAD_PRESS,
+} button_event_type_e;
+
 typedef struct {
+	button_event_type_e type;
 	uint8_t button_id;
 	uint8_t state;
 } button_event_t;
@@ -34,6 +42,7 @@ private:
 	uint32_t button_changed_time[16] = {};
 	uint8_t button_changed[16] = {};
 	uint32_t bootloader_entry_start = 0;
+	uint32_t menu_entry_start = 0;
 };
 
 extern Buttons buttons;

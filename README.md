@@ -111,3 +111,4 @@ Device can be update through DFU mode. To put device into DFU mode use MIDI Syse
 - Readme
   - Supported MIDI commands description
   - SysEx configuration
+- Migrate project to Makefile build system

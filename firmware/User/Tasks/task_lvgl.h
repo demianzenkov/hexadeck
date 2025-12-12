@@ -12,6 +12,7 @@
 #include "display.h"
 #include "task_prototype.h"
 #include "cmsis_os.h"
+#include "screens.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +40,16 @@ typedef enum {
 	COLOR_ELEMENT_BAR,
 } color_element_e;
 
+/*
+Load MIDI preset
+Save MIDI preset
+Save UI preset
+Load UI preset
+Config MIDI
+Automapping
+Firmware Update
+Exit
+*/
 
 typedef struct {
     uint8_t display_id;
@@ -71,24 +82,27 @@ public:
 	void setChannel(uint8_t disp, uint8_t channel);
 	void setColor(uint8_t disp, color_element_e element, lv_color_t color);
 	void setRange(uint8_t disp, uint8_t max_level);
-
-private:
+	void lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id);
+	void lvgl_selectMenu(uint16_t selected_index);
+	void loadMainUI(uint8_t disp);
+	
+	private:
 	static void taskUI(void const *arg);
 	static void taskLVGL(void const *arg);
-	void lvgl_initUiState();
+	void initUiState();
 	void lvgl_setUiState(ui_state_t * state);
 
 public:
 	lv_display_t * lcd_disp;
-
+	
 private:
 	osThreadId lvglTaskHandle;
 	osThreadId uiTaskHandle;
-	ui_state_t ui_states[16];
 	SemaphoreHandle_t lvgl_ready_sem;
 	SemaphoreHandle_t ui_busy_mutex;
 	QueueHandle_t ui_update_queue;
 	ui_state_t current_ui_state = {};
+	ui_state_t ui_states[16];
 };
 
 extern UI ui;

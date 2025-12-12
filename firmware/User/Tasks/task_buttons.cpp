@@ -12,15 +12,17 @@
 #include "bootloader.h"
 
 
-#define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
+// #define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
 
 // Serial 002
-// #define DFU_COMBO_ADC_CH0  568
-// #define DFU_COMBO_ADC_CH4  570
+// #define CORNER_BUTTONS_ADC_CH0  568
+// #define CORNER_BUTTONS_ADC_CH3  570
 
 // Serial 005
-#define DFU_COMBO_ADC_CH0  600
-#define DFU_COMBO_ADC_CH3  560
+#define CORNER_BUTTONS_ADC_CH0  600
+#define CORNER_BUTTONS_ADC_CH3  560
+
+#define CENTRAL_BUTTONS_ADC_CH1_CH2  560
 
 typedef struct {
 	uint16_t median;
@@ -102,22 +104,39 @@ void Buttons::task(void const *arg)
 			}
 
 			// Check if ADC0.ch0 is 568 +-20 & ADC0.ch3 is 570 +-20 for 3 seconds to enter bootloader
-			if( (p_this->adc_values[0] >= (DFU_COMBO_ADC_CH0 - 20)) && (p_this->adc_values[0] <= (DFU_COMBO_ADC_CH0 + 20)) &&
-				(p_this->adc_values[3] >= (DFU_COMBO_ADC_CH3 - 20)) && (p_this->adc_values[3] <= (DFU_COMBO_ADC_CH3 + 20)) ) {
+			if( (p_this->adc_values[0] >= (CORNER_BUTTONS_ADC_CH0 - 20)) && (p_this->adc_values[0] <= (CORNER_BUTTONS_ADC_CH0 + 20)) &&
+				(p_this->adc_values[3] >= (CORNER_BUTTONS_ADC_CH3 - 20)) && (p_this->adc_values[3] <= (CORNER_BUTTONS_ADC_CH3 + 20)) ) {
 
 				if(p_this->bootloader_entry_start == 0) {
 					p_this->bootloader_entry_start = now;
 				} else {
 					if((now - p_this->bootloader_entry_start) >= 3000) {
-						// Enter bootloader
-						CDC_Transmit(0, (uint8_t *)"Entering bootloader...\r\n", 25);
-						HAL_Delay(100);
-						JumpToBootloader();
+						button_event_t button_ev;
+						button_ev.type = BUTTON_EVENT_CORNERS_HOLD;
+						xQueueSend(task_os.button_event_queue, &button_ev, 0);
 					}
 				}
 			} else {
 				// Reset timer
 				p_this->bootloader_entry_start = 0;
+			}
+			
+			// Check if ADC0.ch1 & ADC0.ch2 is CENTRAL_BUTTONS_ADC_CH1_CH2 +-20 500ms to fire hold event
+			if( (p_this->adc_values[1] >= (CENTRAL_BUTTONS_ADC_CH1_CH2 - 20)) && (p_this->adc_values[1] <= (CENTRAL_BUTTONS_ADC_CH1_CH2 + 20)) &&
+				(p_this->adc_values[2] >= (CENTRAL_BUTTONS_ADC_CH1_CH2 - 20)) && (p_this->adc_values[2] <= (CENTRAL_BUTTONS_ADC_CH1_CH2 + 20)) ) {
+
+				if(p_this->menu_entry_start == 0) {
+					p_this->menu_entry_start = now;
+				} else {
+					if((now - p_this->menu_entry_start) >= 500) {
+						button_event_t button_ev;
+						button_ev.type = BUTTON_EVENT_CENTRAL_QUAD_PRESS;
+						xQueueSend(task_os.button_event_queue, &button_ev, 0);
+					}
+				}
+			} else {
+				// Reset timer
+				p_this->menu_entry_start = 0;
 			}
 
 			// Check each ADC channel for its 4 buttons using median ±20
@@ -154,6 +173,7 @@ void Buttons::task(void const *arg)
 			for (int i = 0; i < 16; i++) {
 				if (p_this->button_changed[i] && ((now - p_this->button_changed_time[i]) > 50)) {
 					button_event_t button_ev;
+					button_ev.type = BUTTON_EVENT_SINGLE_PRESS;
 					button_ev.button_id = i;
 					button_ev.state = p_this->button_state[i];
 					xQueueSend(task_os.button_event_queue, &button_ev, 0);

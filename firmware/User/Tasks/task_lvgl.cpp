@@ -92,6 +92,7 @@ UI::UI()
 	}
 }
 
+
 void UI::createTask()
 {
 	lvgl_ready_sem = xSemaphoreCreateBinary();
@@ -124,7 +125,7 @@ void UI::taskUI(void const *arg)
 	loadScreen(SCREEN_ID_MAIN);
 	xSemaphoreGive(p_this->ui_busy_mutex);
 
-	p_this->lvgl_initUiState();
+	p_this->initUiState();
 	ui_state_t * ui_state;
 	
 	for (;;)
@@ -137,6 +138,7 @@ void UI::taskUI(void const *arg)
 		}
 	}
 }
+
 
 void UI::taskLVGL(void const *arg)
 {
@@ -195,13 +197,15 @@ void UI::taskLVGL(void const *arg)
 	}
 }
 
-void UI::lvgl_initUiState()
+
+void UI::initUiState()
 {
 	for(int i = 0; i < 16; i++) {
 		lvgl_setUiState(&ui_states[i]);
 		vTaskDelay(50);
 	}
 }
+
 
 void UI::lvgl_setUiState(ui_state_t * state)
 {
@@ -219,64 +223,84 @@ void UI::lvgl_setUiState(ui_state_t * state)
 	// Always update if display_id changed, otherwise only if value changed
 	if(force_update || (current_ui_state.value != state->value)) {
 		current_ui_state.value = state->value;
-		lv_bar_set_value(objects.bar_level, state->value, LV_ANIM_OFF);
+		lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
 		char value_str[6] = {};
 		snprintf(value_str, sizeof(value_str), "%d", state->value);
-		lv_label_set_text(objects.label_level, value_str);
+		lv_label_set_text(objects.level_label, value_str);
 	}
 	if(force_update || (current_ui_state.max_value != state->max_value)) {
 		current_ui_state.max_value = state->max_value;
-		lv_bar_set_range(objects.bar_level, 0, current_ui_state.max_value);
+		lv_bar_set_range(objects.level_bar, 0, current_ui_state.max_value);
 	}
 	if(force_update || (current_ui_state.channel != state->channel) || (state->channel == 0)) {
 		current_ui_state.channel = state->channel;
 		char channel_str[MAX_CH_LABEL_LENGTH] = {};
 		snprintf(channel_str, sizeof(channel_str), "CH-%d", state->channel+1);
-		lv_label_set_text(objects.label_channel, channel_str);
+		lv_label_set_text(objects.channel_label, channel_str);
 	}
 	if(force_update || (current_ui_state.cc != state->cc) || (state->cc == 0)) {
 		current_ui_state.cc = state->cc;
 		char cc_str[MAX_CC_LABEL_LENGTH] = {};
 		snprintf(cc_str, sizeof(cc_str), "CC-%d", state->cc);
-		lv_label_set_text(objects.label_cc, cc_str);
+		lv_label_set_text(objects.cc_label, cc_str);
 	}
 	if(force_update || (strcmp(current_ui_state.name, state->name) != 0)) {
 		strncpy(current_ui_state.name, state->name, sizeof(current_ui_state.name));
-		lv_label_set_text(objects.label_name, state->name);
+		lv_label_set_text(objects.name_label, state->name);
 	}
 	if(force_update || (lv_color_eq(current_ui_state.bar_color, state->bar_color) == false)) {
 		current_ui_state.bar_color = state->bar_color;
-		lv_obj_set_style_bg_color(objects.bar_level, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_opa(objects.bar_level, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_color(objects.level_bar, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_opa(objects.level_bar, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 	}
 	if(force_update || (lv_color_eq(current_ui_state.border_color, state->border_color) == false)) {
 		current_ui_state.border_color = state->border_color;
-		lv_obj_set_style_border_color(objects.panel_general, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.panel_channel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.panel_name, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.panel_cc, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.panel_range, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_border_color(objects.general_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_border_color(objects.channel_pannel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_border_color(objects.name_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_border_color(objects.cc_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_border_color(objects.range_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 	}
 	if(force_update || (lv_color_eq(current_ui_state.text_color, state->text_color) == false)) {
 		current_ui_state.text_color = state->text_color;
-		lv_obj_set_style_text_color(objects.label_name, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.label_channel, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.label_level, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.label_cc, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.label_range, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.name_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.channel_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.level_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.cc_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_text_color(objects.range_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 	}
 	if(force_update || (lv_color_eq(current_ui_state.background_color, state->background_color) == false)) {
 		current_ui_state.background_color = state->background_color;
-		lv_obj_set_style_bg_color(objects.panel_general, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.panel_channel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.panel_name, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.panel_cc, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.panel_range, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_color(objects.general_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_color(objects.channel_pannel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_color(objects.name_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_color(objects.cc_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		lv_obj_set_style_bg_color(objects.range_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 	}
 
 	xSemaphoreGive(ui_busy_mutex);
 }
 
+
+void UI::lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id)
+{
+	if (display_id > 15)
+	{
+		return;
+	}
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(display_id);
+	loadScreen(screen_id);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_selectMenu(uint16_t selected_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	lv_obj_t * roller = objects.menu_roller;
+	lv_roller_set_selected(roller, selected_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
 
 void UI::setRange(uint8_t disp, uint8_t max_level)
 {
@@ -289,6 +313,7 @@ void UI::setRange(uint8_t disp, uint8_t max_level)
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
 
+
 void UI::setValue(uint8_t disp, uint8_t value)
 {
 	if (value > 127)
@@ -300,6 +325,7 @@ void UI::setValue(uint8_t disp, uint8_t value)
 	ui_state_t * ui_state_pointer = &ui_states[disp];
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
+
 
 void UI::setName(uint8_t disp, const char *str)
 {
@@ -315,6 +341,7 @@ void UI::setName(uint8_t disp, const char *str)
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
 
+
 void UI::setChannel(uint8_t disp, uint8_t channel)
 {
 	if(channel > 16) {
@@ -326,6 +353,7 @@ void UI::setChannel(uint8_t disp, uint8_t channel)
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
 
+
 void UI::setCC(uint8_t disp, const uint8_t cc)
 {
 	if(cc > 127) {
@@ -336,6 +364,7 @@ void UI::setCC(uint8_t disp, const uint8_t cc)
 	ui_state_t * ui_state_pointer = &ui_states[disp];
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
+
 
 void UI::setColor(uint8_t disp, color_element_e element, lv_color_t color)
 {
@@ -359,6 +388,12 @@ void UI::setColor(uint8_t disp, color_element_e element, lv_color_t color)
 		default:
 			return;
 	}
+	ui_state_t * ui_state_pointer = &ui_states[disp];
+	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
+}
+
+void UI::loadMainUI(uint8_t disp)
+{
 	ui_state_t * ui_state_pointer = &ui_states[disp];
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }

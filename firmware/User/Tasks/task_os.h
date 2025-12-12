@@ -1,5 +1,5 @@
 /*
- * task_acm.h
+ * task_os.h
  *
  */
 
@@ -9,8 +9,11 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "task_prototype.h"
+#include "task_buttons.h"
 #include "task_encoder.h"
-
+#include "task_lvgl.h"
+#include "task_midi.h"
+#include "task_acm.h"
 
 #define ENCODER_DEFAULT_VALUE 		64
 #define ENCODER_DEFAULT_MIN_VALUE   0
@@ -25,6 +28,18 @@ extern "C" {
 #endif
 
 
+typedef enum {
+	MENU_SELECT_LOAD_MIDI = 0,
+	MENU_SELECT_SAVE_MIDI,
+	MENU_SELECT_LOAD_UI,
+	MENU_SELECT_SAVE_UI,
+	MENU_SELECT_CONFIG_MIDI,
+	MENU_SELECT_AUTOMAPPING,
+	MENU_SELECT_FIRMWARE_UPDATE,
+	MENU_SELECT_EXIT,
+	MENU_SELECT_COUNT,
+} menu_select_e;
+
 typedef struct {
 	uint8_t channel;
 	uint8_t cc;
@@ -35,7 +50,10 @@ typedef struct {
 	uint8_t name[16 + 1];
 } module_state_t;
 
-
+typedef enum {
+	ACTION_LOAD = 0,
+	ACTION_SAVE,
+} action_load_save_e;
 
 class TaskOS : public TaskPrototype {
 public:
@@ -43,6 +61,9 @@ public:
 	void createTask();
 private:
 	static void task(void const *arg);
+	void processEncoderEvent(encoder_event_t * encoder_event);
+	void processMenuSelector(bool increase);
+	void processMenuButton();
 
 public:
 	QueueHandle_t encoder_event_queue;
@@ -52,7 +73,21 @@ public:
 	QueueHandle_t midi_sysex_input_event_queue;
 	
 	module_state_t module_states[16];
-
+private:
+	// ui.createTask();
+	// task_midi.createTask();
+	// buttons.createTask();
+	// task_encoder.createTask();
+	// acm.createTask();
+	ACM * acm_p;
+	Buttons * buttons_p;
+	UI * ui_p;
+	TaskMIDI * task_midi_p;
+	TaskEncoder * task_encoder_p;
+	ScreensEnum current_screen;
+	menu_select_e current_menu_selection;
+	action_load_save_e selected_action;
+	
 };
 
 extern TaskOS task_os;

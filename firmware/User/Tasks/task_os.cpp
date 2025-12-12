@@ -1,10 +1,4 @@
 #include "task_os.h"
-
-#include "task_buttons.h"
-#include "task_encoder.h"
-#include "task_lvgl.h"
-#include "task_midi.h"
-#include "task_acm.h"
 #include "bootloader.h"
 
 TaskOS task_os;
@@ -12,6 +6,12 @@ TaskOS task_os;
 
 TaskOS::TaskOS()
 {
+	ui_p = &ui;
+	task_midi_p = &task_midi;
+	buttons_p = &buttons;
+	task_encoder_p = &task_encoder;
+	acm_p = &acm;
+
 	for (uint8_t i = 0; i < 16; i++)
 	{
 		module_states[i].channel = MIDI_DEFAULT_CHANNEL;	// channel
@@ -21,6 +21,9 @@ TaskOS::TaskOS()
 		module_states[i].current_value = ENCODER_DEFAULT_VALUE;
 		module_states[i].step = ENCODER_DEFAULT_STEP;
 	}
+
+	current_screen = SCREEN_ID_MAIN;
+	current_menu_selection = MENU_SELECT_LOAD_MIDI;
 }
 
 void TaskOS::createTask()
@@ -30,15 +33,116 @@ void TaskOS::createTask()
 	midi_input_event_queue = xQueueCreate(32, sizeof(midi_event_t));
 	midi_sysex_input_event_queue = xQueueCreate(8, sizeof(midi_sysex_event_t));
 	button_event_queue = xQueueCreate(8, sizeof(button_event_t));
-	
-	ui.createTask();
-	task_midi.createTask();
-	buttons.createTask();
-	task_encoder.createTask();
-	acm.createTask();
+
+	ui_p->createTask();
+	task_midi_p->createTask();
+	buttons_p->createTask();
+	task_encoder_p->createTask();
+	acm_p->createTask();
 
 	osThreadDef(OSTask, task, osPriorityNormal, 0, 512);
 	task_handle = osThreadCreate(osThread(OSTask), this);
+}
+
+
+void TaskOS::processEncoderEvent(encoder_event_t * encoder_event)
+{
+	uint8_t enc_id = encoder_event->encoder_id;
+	if(enc_id < 16) {
+		module_state_t * module_state = &module_states[enc_id];
+		if(encoder_event->increase) {
+			if(module_state->current_value + module_state->step <= module_state->max_value) {
+				module_state->current_value += module_state->step;
+			} else {
+				module_state->current_value = module_state->max_value;
+			}
+		} else {
+			if(module_state->current_value >= (module_state->min_value + module_state->step)) {
+				module_state->current_value -= module_state->step;
+			} else {
+				module_state->current_value = module_state->min_value;
+			}
+		}
+		task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
+		ui_p->setValue(enc_id, module_state->current_value);
+	}
+}
+
+
+void TaskOS::processMenuSelector(bool increase)
+{
+	if(increase) {
+		if(current_menu_selection < (MENU_SELECT_COUNT - 1)) {
+			current_menu_selection = (menu_select_e)((int)current_menu_selection + 1);
+		} else {
+			current_menu_selection = (menu_select_e)0;
+		}
+	} else {
+		if(current_menu_selection > 0) {
+			current_menu_selection = (menu_select_e)((int)current_menu_selection - 1);
+		} else {
+			current_menu_selection = (menu_select_e)((int)MENU_SELECT_COUNT - 1);
+		}
+	}
+	ui_p->lvgl_selectMenu(current_menu_selection);
+}
+
+
+void TaskOS::processMenuButton()
+{
+	switch(current_screen) {
+		case SCREEN_ID_MENU: {
+			switch(current_menu_selection) {
+				case MENU_SELECT_LOAD_MIDI: {
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_MIDI_BANKS);
+					current_screen = SCREEN_ID_MIDI_BANKS;
+					selected_action = ACTION_LOAD;
+					break;
+				}
+				case MENU_SELECT_SAVE_MIDI: {
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_MIDI_BANKS);
+					selected_action = ACTION_SAVE;
+					current_screen = SCREEN_ID_MIDI_BANKS;
+					break;
+				}
+				case MENU_SELECT_LOAD_UI: {
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_UI_PRESETS);
+					current_screen = SCREEN_ID_UI_PRESETS;
+					selected_action = ACTION_LOAD;
+					break;
+				}
+				case MENU_SELECT_SAVE_UI: {
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_UI_PRESETS);
+					current_screen = SCREEN_ID_UI_PRESETS;
+					selected_action = ACTION_SAVE;
+					break;
+				}
+				case MENU_SELECT_CONFIG_MIDI: {
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI);
+					current_screen = SCREEN_ID_CONFIG_MIDI;
+					break;
+				}
+				case MENU_SELECT_AUTOMAPPING: {
+					break;
+				}
+				case MENU_SELECT_FIRMWARE_UPDATE: {
+					JumpToBootloader();
+					break;
+				}
+				case MENU_SELECT_EXIT: {
+					ui_p->loadMainUI(0);
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_MAIN);
+					current_screen = SCREEN_ID_MAIN;
+					break;
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
 }
 
 
@@ -51,28 +155,15 @@ void TaskOS::task(void const *arg)
 	midi_event_t midi_input_ev;
 	midi_sysex_event_t sysex_input_ev;
 	button_event_t button_ev;
+
 	while (1)
 	{
 		if(xQueueReceive(p_this->encoder_event_queue, &encoder_event, 0) == pdTRUE) {
-			uint8_t enc_id = encoder_event.encoder_id;
-			if(enc_id < 16) {
-				module_state_t * module_state = &p_this->module_states[enc_id];
-				if(encoder_event.increase) {
-					if(module_state->current_value + module_state->step <= module_state->max_value) {
-						module_state->current_value += module_state->step;
-					} else {
-						module_state->current_value = module_state->max_value;
-					}
-				} else {
-					if(module_state->current_value >= (module_state->min_value + module_state->step)) {
-						module_state->current_value -= module_state->step;
-					} else {
-						module_state->current_value = module_state->min_value;
-					}
-				}
-				task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
-				// Update UI
-				ui.setValue(enc_id, module_state->current_value);
+			if(p_this->current_screen == SCREEN_ID_MAIN) {
+				p_this->processEncoderEvent(&encoder_event);
+			}
+			else if(encoder_event.encoder_id == 0) {
+				p_this->processMenuSelector(encoder_event.increase);
 			}
 		}
 		
@@ -82,7 +173,7 @@ void TaskOS::task(void const *arg)
 					if(acm_event.id < 16) {
 						memset(p_this->module_states[acm_event.id].name, 0, sizeof(p_this->module_states[acm_event.id].name));
 						strncpy((char *)p_this->module_states[acm_event.id].name, (char *)acm_event.data, 16);
-						ui.setName(acm_event.id, (const char *)p_this->module_states[acm_event.id].name);
+						p_this->ui_p->setName(acm_event.id, (const char *)p_this->module_states[acm_event.id].name);
 					}
 					break;
 				}
@@ -94,9 +185,9 @@ void TaskOS::task(void const *arg)
 							// TODO: check if value correlates with step
 							module_state->current_value = acm_event.data[0];
 							// Send MIDI CC event
-							task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
+							p_this->task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
 							// Update UI
-							ui.setValue(acm_event.id, module_state->current_value);
+							p_this->ui_p->setValue(acm_event.id, module_state->current_value);
 						}
 					}
 					break;
@@ -106,7 +197,7 @@ void TaskOS::task(void const *arg)
 						module_state_t * module_state = &p_this->module_states[acm_event.id];
 						if((acm_event.data[0] >= 1) && (acm_event.data[0] <= 16)) {
 							module_state->channel = acm_event.data[0];
-							ui.setChannel(acm_event.id, module_state->channel);
+							p_this->ui_p->setChannel(acm_event.id, module_state->channel);
 						}
 					}
 					break;
@@ -116,7 +207,7 @@ void TaskOS::task(void const *arg)
 						module_state_t * module_state = &p_this->module_states[acm_event.id];
 						if(acm_event.data[0] <= 127) {
 							module_state->cc = acm_event.data[0];
-							ui.setCC(acm_event.id, module_state->cc);
+							p_this->ui_p->setCC(acm_event.id, module_state->cc);
 						}
 					}
 					break;
@@ -126,14 +217,14 @@ void TaskOS::task(void const *arg)
 						module_state_t * module_state = &p_this->module_states[acm_event.id];
 						if((acm_event.data[0] >= module_state->min_value) && (acm_event.data[0] <= 127)) {
 							module_state->max_value = acm_event.data[0];
-							ui.setRange(acm_event.id, module_state->max_value);
+							p_this->ui_p->setRange(acm_event.id, module_state->max_value);
 							// Adjust current value if needed
 							if(module_state->current_value > module_state->max_value) {
 								module_state->current_value = module_state->max_value;
 								// Send MIDI CC event
-								task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
+								p_this->task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
 								// Update UI
-								ui.setValue(acm_event.id, module_state->current_value);
+								p_this->ui_p->setValue(acm_event.id, module_state->current_value);
 							}
 						}
 					}
@@ -142,28 +233,28 @@ void TaskOS::task(void const *arg)
 				case ACM_EVENT_TYPE_SET_COLOR_BG: {
 					if(acm_event.id < 16) {
 						lv_color_t color = lv_color_make(acm_event.data[0], acm_event.data[1], acm_event.data[2]);
-						ui.setColor(acm_event.id, COLOR_ELEMENT_BACKGROUND, color);
+						p_this->ui_p->setColor(acm_event.id, COLOR_ELEMENT_BACKGROUND, color);
 					}
 					break;
 				}
 				case ACM_EVENT_TYPE_SET_COLOR_BORDER: {
 					if(acm_event.id < 16) {
 						lv_color_t color = lv_color_make(acm_event.data[0], acm_event.data[1], acm_event.data[2]);
-						ui.setColor(acm_event.id, COLOR_ELEMENT_BORDER, color);
+						p_this->ui_p->setColor(acm_event.id, COLOR_ELEMENT_BORDER, color);
 					}
 					break;
 				}
 				case ACM_EVENT_TYPE_SET_COLOR_TEXT: {
 					if(acm_event.id < 16) {
 						lv_color_t color = lv_color_make(acm_event.data[0], acm_event.data[1], acm_event.data[2]);
-						ui.setColor(acm_event.id, COLOR_ELEMENT_TEXT, color);
+						p_this->ui_p->setColor(acm_event.id, COLOR_ELEMENT_TEXT, color);
 					}
 					break;
 				}
 				case ACM_EVENT_TYPE_SET_COLOR_BAR: {
 					if(acm_event.id < 16) {
 						lv_color_t color = lv_color_make(acm_event.data[0], acm_event.data[1], acm_event.data[2]);
-						ui.setColor(acm_event.id, COLOR_ELEMENT_BAR, color);
+						p_this->ui_p->setColor(acm_event.id, COLOR_ELEMENT_BAR, color);
 					}
 					break;
 				}
@@ -177,12 +268,31 @@ void TaskOS::task(void const *arg)
 		}
 		
 		if(xQueueReceive(p_this->button_event_queue, &button_ev, 0) == pdTRUE) {
-			// Process button events, CC-102..CC-119, values 0/127
-			if(button_ev.button_id < 16) {
-				uint8_t cc_number = 102 + button_ev.button_id;
-				uint8_t cc_value = button_ev.state ? 127 : 0;
-				// Send MIDI CC event
-				task_midi.sendMidiCC(0, cc_number, cc_value);
+			switch (button_ev.type) {
+				case BUTTON_EVENT_SINGLE_PRESS: {
+					if(p_this->current_screen == SCREEN_ID_MAIN) {
+						if(button_ev.button_id < 16) {
+							// Process single press button events, CC-100..CC-115, values 0/127
+							uint8_t cc_number = 102 + button_ev.button_id;
+							uint8_t cc_value = button_ev.state ? 127 : 0;
+							task_midi.sendMidiCC(0, cc_number, cc_value);
+						}
+					} else if(button_ev.button_id == 0) {
+						p_this->processMenuButton();
+					}
+					break;
+				}
+				case BUTTON_EVENT_CORNERS_HOLD: {
+					JumpToBootloader();
+					break;
+				}
+				case BUTTON_EVENT_CENTRAL_QUAD_PRESS: {
+					p_this->ui_p->lvgl_loadScreen(0, SCREEN_ID_MENU);
+					p_this->current_screen = SCREEN_ID_MENU;
+					break;
+				}
+				default:
+					break;
 			}
 		}
 
