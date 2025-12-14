@@ -102,33 +102,15 @@ void Buttons::task(void const *arg)
 			for(int i = 0; i < 16; i++) {
 				p_this->button_state[i] = 0;
 			}
-
-			// Check if ADC0.ch0 is 568 +-20 & ADC0.ch3 is 570 +-20 for 3 seconds to enter bootloader
-			if( (p_this->adc_values[0] >= (CORNER_BUTTONS_ADC_CH0 - 20)) && (p_this->adc_values[0] <= (CORNER_BUTTONS_ADC_CH0 + 20)) &&
-				(p_this->adc_values[3] >= (CORNER_BUTTONS_ADC_CH3 - 20)) && (p_this->adc_values[3] <= (CORNER_BUTTONS_ADC_CH3 + 20)) ) {
-
-				if(p_this->bootloader_entry_start == 0) {
-					p_this->bootloader_entry_start = now;
-				} else {
-					if((now - p_this->bootloader_entry_start) >= 3000) {
-						button_event_t button_ev;
-						button_ev.type = BUTTON_EVENT_CORNERS_HOLD;
-						xQueueSend(task_os.button_event_queue, &button_ev, 0);
-					}
-				}
-			} else {
-				// Reset timer
-				p_this->bootloader_entry_start = 0;
-			}
 			
 			// Check if ADC0.ch1 & ADC0.ch2 is CENTRAL_BUTTONS_ADC_CH1_CH2 +-20 500ms to fire hold event
-			if( (p_this->adc_values[1] >= (CENTRAL_BUTTONS_ADC_CH1_CH2 - 20)) && (p_this->adc_values[1] <= (CENTRAL_BUTTONS_ADC_CH1_CH2 + 20)) &&
-				(p_this->adc_values[2] >= (CENTRAL_BUTTONS_ADC_CH1_CH2 - 20)) && (p_this->adc_values[2] <= (CENTRAL_BUTTONS_ADC_CH1_CH2 + 20)) ) {
+			if( (p_this->adc_values[1] >= (CENTRAL_BUTTONS_ADC_CH1_CH2 - 30)) && (p_this->adc_values[1] <= (CENTRAL_BUTTONS_ADC_CH1_CH2 + 30)) &&
+				(p_this->adc_values[2] >= (CENTRAL_BUTTONS_ADC_CH1_CH2 - 30)) && (p_this->adc_values[2] <= (CENTRAL_BUTTONS_ADC_CH1_CH2 + 30)) ) {
 
 				if(p_this->menu_entry_start == 0) {
 					p_this->menu_entry_start = now;
 				} else {
-					if((now - p_this->menu_entry_start) >= 500) {
+					if((now - p_this->menu_entry_start) >= 100) {
 						button_event_t button_ev;
 						button_ev.type = BUTTON_EVENT_CENTRAL_QUAD_PRESS;
 						xQueueSend(task_os.button_event_queue, &button_ev, 0);

@@ -6,18 +6,19 @@
  */
 
 #include "task_lvgl.h"
+#include "task_os.h"
 #include "cmsis_os.h"
 #include "main.h"
-#include "lvgl.h"
-#include "src/drivers/display/st7735/lv_st7735.h"
+#include "lvgl/lvgl.h"
+#include "lvgl/src/drivers/display/st7735/lv_st7735.h"
+#include "lvgl/src/display/lv_display_private.h"
+#include "lvgl/src/display/lv_display.h"
 #include "lv_lcd_custom_mipi.h"
-#include "src/display/lv_display.h"
-#include "src/display/lv_display_private.h"
 #include "ui.h"
 #include "screens.h"
-#include "task_lvgl.h"
 #include "string.h"
 #include "stdio.h"
+
 
 #define TEST_UI 0
 
@@ -100,7 +101,7 @@ void UI::createTask()
 	xSemaphoreGive(ui_busy_mutex);
 	xSemaphoreTake(lvgl_ready_sem, 0);
 
-	ui_update_queue = xQueueCreate(32, sizeof(ui_state_t *));
+	ui_update_queue = xQueueCreate(64, sizeof(ui_state_t *));
 
 	osThreadDef(lvglTask, taskLVGL, osPriorityNormal, 0, 1024);
 	lvglTaskHandle = osThreadCreate(osThread(lvglTask), this);
@@ -294,6 +295,7 @@ void UI::lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id)
 	xSemaphoreGive(ui_busy_mutex);
 }
 
+
 void UI::lvgl_selectMenu(uint16_t selected_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
@@ -301,6 +303,76 @@ void UI::lvgl_selectMenu(uint16_t selected_index)
 	lv_roller_set_selected(roller, selected_index, LV_ANIM_OFF);
 	xSemaphoreGive(ui_busy_mutex);
 }
+
+
+void UI::lvgl_selectMidiBank(uint8_t bank_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	lv_obj_t * roller = objects.midi_banks_roller;
+	lv_roller_set_selected(roller, bank_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_selectUiPreset(uint8_t preset_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	lv_obj_t * roller = objects.ui_presets_roller;
+	lv_roller_set_selected(roller, preset_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_selectMidiUnit(uint8_t unit_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	lv_obj_t * roller = objects.config_midi_roller;
+	lv_roller_set_selected(roller, unit_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_loadMidiUnitParameters(void * module_state)
+{
+	module_state_t * state = (module_state_t *)module_state;
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	lv_obj_t * roller = objects.config_midi_unit_roller;
+	uint8_t options_buffer[64] = {};
+	snprintf((char *)options_buffer, sizeof(options_buffer), "Channel: %d\nCC: %d\nReturn", state->channel + 1, state->cc);
+	lv_roller_set_options(roller, (char *)options_buffer, LV_ROLLER_MODE_INFINITE);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+
+void UI::lvgl_selectMidiParameter(uint8_t parameter_menu_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	lv_obj_t * roller = objects.config_midi_unit_roller;
+	lv_roller_set_selected(roller, parameter_menu_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_activateChannelSelector(bool active)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	// if active - set roller to checked state
+	lv_obj_t * roller = objects.config_midi_unit_roller;
+	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_activateCCSelector(bool active)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	set_active_display(0);
+	lv_obj_t * roller = objects.config_midi_unit_roller;
+	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
 
 void UI::setRange(uint8_t disp, uint8_t max_level)
 {
@@ -392,7 +464,7 @@ void UI::setColor(uint8_t disp, color_element_e element, lv_color_t color)
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);
 }
 
-void UI::loadMainUI(uint8_t disp)
+void UI::updateState(uint8_t disp)
 {
 	ui_state_t * ui_state_pointer = &ui_states[disp];
 	xQueueSend(ui_update_queue, &ui_state_pointer, portMAX_DELAY);

@@ -1,7 +1,7 @@
 #ifndef EEZ_LVGL_UI_SCREENS_H
 #define EEZ_LVGL_UI_SCREENS_H
 
-#include <lvgl.h>
+#include <lvgl/lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,8 +14,6 @@ typedef struct _objects_t {
     lv_obj_t *ui_presets;
     lv_obj_t *config_midi;
     lv_obj_t *config_midi_unit;
-    lv_obj_t *config_midi_channel;
-    lv_obj_t *config_midi_cc;
     lv_obj_t *general_panel;
     lv_obj_t *channel_pannel;
     lv_obj_t *channel_label;
@@ -29,11 +27,9 @@ typedef struct _objects_t {
     lv_obj_t *range_label;
     lv_obj_t *menu_roller;
     lv_obj_t *midi_banks_roller;
-    lv_obj_t *ui_banks_roller;
+    lv_obj_t *ui_presets_roller;
     lv_obj_t *config_midi_roller;
     lv_obj_t *config_midi_unit_roller;
-    lv_obj_t *panel_config_midi_general;
-    lv_obj_t *panel_config_midi_general_1;
 } objects_t;
 
 extern objects_t objects;
@@ -45,8 +41,6 @@ enum ScreensEnum {
     SCREEN_ID_UI_PRESETS = 4,
     SCREEN_ID_CONFIG_MIDI = 5,
     SCREEN_ID_CONFIG_MIDI_UNIT = 6,
-    SCREEN_ID_CONFIG_MIDI_CHANNEL = 7,
-    SCREEN_ID_CONFIG_MIDI_CC = 8,
 };
 
 void create_screen_main();
@@ -66,12 +60,6 @@ void tick_screen_config_midi();
 
 void create_screen_config_midi_unit();
 void tick_screen_config_midi_unit();
-
-void create_screen_config_midi_channel();
-void tick_screen_config_midi_channel();
-
-void create_screen_config_midi_cc();
-void tick_screen_config_midi_cc();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

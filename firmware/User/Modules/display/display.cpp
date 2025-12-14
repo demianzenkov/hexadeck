@@ -6,7 +6,7 @@
  */
 
 #include "display.h"
-#include "src/drivers/display/st7735/lv_st7735.h"
+#include "lvgl/src/drivers/display/st7735/lv_st7735.h"
 #include "task_lvgl.h"
 
 extern SPI_HandleTypeDef hspi1;

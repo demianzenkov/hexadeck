@@ -22,7 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "./src/tick/lv_tick.h"
+#include "lvgl/src/tick/lv_tick.h"
 #include "task_encoder.h"
 #include "cmsis_os.h"
 /* USER CODE END Includes */

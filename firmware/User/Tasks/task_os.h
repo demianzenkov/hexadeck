@@ -64,7 +64,14 @@ private:
 	void processEncoderEvent(encoder_event_t * encoder_event);
 	void processMenuSelector(bool increase);
 	void processMenuButton();
+	void processMidiBankSelector(bool increase);
+	void processUiPresetSelector(bool increase);
+	void processMidiUnitSelector(bool increase);
+	void processMidiParameterSelector(bool increase);
 
+	void setStateCC(uint8_t module_id, uint8_t cc);
+	void setStateChannel(uint8_t module_id, uint8_t channel);
+	
 public:
 	QueueHandle_t encoder_event_queue;
 	QueueHandle_t button_event_queue;
@@ -87,7 +94,12 @@ private:
 	ScreensEnum current_screen;
 	menu_select_e current_menu_selection;
 	action_load_save_e selected_action;
-	
+	uint8_t midi_bank_selection;	// 4 banks
+	uint8_t ui_preset_selection;	// 4 presets
+	uint8_t midi_unit_selection;	// 16 units
+	uint8_t midi_parameter_selection; // 2 parameters
+	bool midi_parameter_channel_selector_active;
+	bool midi_parameter_cc_selector_active;
 };
 
 extern TaskOS task_os;

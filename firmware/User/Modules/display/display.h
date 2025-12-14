@@ -8,7 +8,7 @@
 
 #include "main.h"
 #include "cmsis_os.h"
-#include "lvgl.h"
+#include "lvgl/lvgl.h"
 
 #ifdef __cplusplus
 extern "C" {

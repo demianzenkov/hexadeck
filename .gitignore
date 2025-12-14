@@ -4,3 +4,9 @@ Release/
 .vscode/
 .idea/
 *.bin
+build/
+*/.settings
+.stm32env
+*.make
+.cproject
+.mxproject

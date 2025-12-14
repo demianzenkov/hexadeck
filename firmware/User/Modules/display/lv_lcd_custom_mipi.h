@@ -19,7 +19,7 @@
 #define LV_LCD_GENERIC_CUSTOM__MIPI_H
 
 #include "lv_lcd_custom_mipi.h"
-#include "src/drivers/display/lcd/lv_lcd_generic_mipi.h"
+#include "lvgl/src/drivers/display/lcd/lv_lcd_generic_mipi.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,7 +29,7 @@ extern "C" {
  *      INCLUDES
  *********************/
 
-#include "src/display/lv_display.h"
+#include "lvgl/src/display/lv_display.h"
 
 #if LV_USE_GENERIC_MIPI
 

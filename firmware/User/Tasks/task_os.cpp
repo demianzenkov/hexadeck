@@ -24,7 +24,10 @@ TaskOS::TaskOS()
 
 	current_screen = SCREEN_ID_MAIN;
 	current_menu_selection = MENU_SELECT_LOAD_MIDI;
+	midi_parameter_channel_selector_active = false;
+	midi_parameter_cc_selector_active = false;
 }
+
 
 void TaskOS::createTask()
 {
@@ -66,25 +69,6 @@ void TaskOS::processEncoderEvent(encoder_event_t * encoder_event)
 		task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
 		ui_p->setValue(enc_id, module_state->current_value);
 	}
-}
-
-
-void TaskOS::processMenuSelector(bool increase)
-{
-	if(increase) {
-		if(current_menu_selection < (MENU_SELECT_COUNT - 1)) {
-			current_menu_selection = (menu_select_e)((int)current_menu_selection + 1);
-		} else {
-			current_menu_selection = (menu_select_e)0;
-		}
-	} else {
-		if(current_menu_selection > 0) {
-			current_menu_selection = (menu_select_e)((int)current_menu_selection - 1);
-		} else {
-			current_menu_selection = (menu_select_e)((int)MENU_SELECT_COUNT - 1);
-		}
-	}
-	ui_p->lvgl_selectMenu(current_menu_selection);
 }
 
 
@@ -130,7 +114,8 @@ void TaskOS::processMenuButton()
 					break;
 				}
 				case MENU_SELECT_EXIT: {
-					ui_p->loadMainUI(0);
+					// TODO: update display states
+					ui_p->updateState(0);
 					ui_p->lvgl_loadScreen(0, SCREEN_ID_MAIN);
 					current_screen = SCREEN_ID_MAIN;
 					break;
@@ -140,9 +125,237 @@ void TaskOS::processMenuButton()
 			}
 			break;
 		}
+		case SCREEN_ID_MIDI_BANKS: {
+			if(midi_bank_selection > 3) {
+				ui_p->lvgl_selectMidiBank(0);
+				midi_bank_selection = 0;
+				ui_p->lvgl_loadScreen(0, SCREEN_ID_MENU);
+				current_screen = SCREEN_ID_MENU;
+			}
+			break;
+		}
+		case SCREEN_ID_UI_PRESETS: {
+			if(ui_preset_selection > 3) {
+				ui_p->lvgl_selectUiPreset(0);
+				ui_preset_selection = 0;
+				ui_p->lvgl_loadScreen(0, SCREEN_ID_MENU);
+				current_screen = SCREEN_ID_MENU;
+			}
+			break;
+		}
+		case SCREEN_ID_CONFIG_MIDI: {
+			if(midi_unit_selection > 15) {
+				ui_p->lvgl_selectMidiUnit(0);
+				midi_unit_selection = 0;
+				ui_p->lvgl_loadScreen(0, SCREEN_ID_MENU);
+				current_screen = SCREEN_ID_MENU;
+			}
+			else {
+				ui_p->lvgl_loadMidiUnitParameters(&module_states[midi_unit_selection]);
+				ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI_UNIT);
+				current_screen = SCREEN_ID_CONFIG_MIDI_UNIT;
+			}
+			break;
+		}
+		case SCREEN_ID_CONFIG_MIDI_UNIT: {
+			if(midi_parameter_selection > 1) {
+				ui_p->lvgl_selectMidiParameter(0);
+				midi_parameter_selection = 0;
+				ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI);
+				current_screen = SCREEN_ID_CONFIG_MIDI;
+			}
+			else if (midi_parameter_selection == 0) {
+				if(midi_parameter_channel_selector_active) {
+					midi_parameter_channel_selector_active = false;
+					// TODO: set unit channel state
+					ui_p->setChannel(midi_unit_selection, module_states[midi_unit_selection].channel);
+					vTaskDelay(30);
+					ui_p->lvgl_loadScreen(midi_unit_selection, SCREEN_ID_MAIN);
+					vTaskDelay(30);
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI_UNIT);
+					vTaskDelay(30);
+				} else {
+					midi_parameter_channel_selector_active = true;
+				}
+				ui_p->lvgl_activateChannelSelector(midi_parameter_channel_selector_active);
+			}
+			else if(midi_parameter_selection == 1) {
+				if(midi_parameter_cc_selector_active) {
+					midi_parameter_cc_selector_active = false;
+					// TODO: set unit CC state
+					ui_p->setCC(midi_unit_selection, module_states[midi_unit_selection].cc);
+					vTaskDelay(30);
+					ui_p->lvgl_loadScreen(midi_unit_selection, SCREEN_ID_MAIN);
+					vTaskDelay(30);
+					ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI_UNIT);
+					vTaskDelay(30);
+				} else {
+					midi_parameter_cc_selector_active = true;
+				}
+				ui_p->lvgl_activateCCSelector(midi_parameter_cc_selector_active);
+			}
+			break;
+		}
 		default:
 			break;
 	}
+}
+
+
+void TaskOS::processMenuSelector(bool increase)
+{
+	if(increase) {
+		if(current_menu_selection < (MENU_SELECT_COUNT - 1)) {
+			current_menu_selection = (menu_select_e)((int)current_menu_selection + 1);
+		} else {
+			current_menu_selection = (menu_select_e)0;
+		}
+	} else {
+		if(current_menu_selection > 0) {
+			current_menu_selection = (menu_select_e)((int)current_menu_selection - 1);
+		} else {
+			current_menu_selection = (menu_select_e)((int)MENU_SELECT_COUNT - 1);
+		}
+	}
+	ui_p->lvgl_selectMenu(current_menu_selection);
+}
+
+
+void TaskOS::processMidiBankSelector(bool increase)
+{
+	if(increase) {
+		if(midi_bank_selection < 4) {
+			midi_bank_selection++;
+		} else {
+			midi_bank_selection = 0;
+		}
+	} else {
+		if(midi_bank_selection > 0) {
+			midi_bank_selection--;
+		} else {
+			midi_bank_selection = 4;
+		}
+	}
+	ui_p->lvgl_selectMidiBank(midi_bank_selection);
+}
+
+
+void TaskOS::processUiPresetSelector(bool increase)
+{
+	if(increase) {
+		if(ui_preset_selection < 4) {
+			ui_preset_selection++;
+		} else {
+			ui_preset_selection = 0;
+		}
+	} else {
+		if(ui_preset_selection > 0) {
+			ui_preset_selection--;
+		} else {
+			ui_preset_selection = 4;
+		}
+	}
+	ui_p->lvgl_selectUiPreset(ui_preset_selection);
+}
+
+
+void TaskOS::processMidiUnitSelector(bool increase)
+{
+	if(increase) {
+		if(midi_unit_selection < 16) {
+			midi_unit_selection++;
+		} else {
+			midi_unit_selection = 0;
+		}
+	} else {
+		if(midi_unit_selection > 0) {
+			midi_unit_selection--;
+		} else {
+			midi_unit_selection = 16;
+		}
+	}
+	ui_p->lvgl_selectMidiUnit(midi_unit_selection);
+}
+
+
+void TaskOS::processMidiParameterSelector(bool increase)
+{
+	if(midi_parameter_channel_selector_active) {
+		// Channel selector active, update channel state & lvgl_loadMidiUnitParameters
+		uint8_t channel = module_states[midi_unit_selection].channel;
+		if(increase) {
+			if(channel < 15) {
+				channel++;
+			} else {
+				channel = 0;
+			}
+		} else {
+			if(channel > 0) {
+				channel--;
+			} else {
+				channel = 15;
+			}
+		}
+		module_states[midi_unit_selection].channel = channel;
+		ui_p->lvgl_loadMidiUnitParameters(&module_states[midi_unit_selection]);
+		ui_p->lvgl_selectMidiParameter(midi_parameter_selection);	// to keep roller not updated
+	} else if (midi_parameter_cc_selector_active) {
+		// CC selector active, update CC state & lvgl_loadMidiUnitParameters
+		uint8_t cc = module_states[midi_unit_selection].cc;
+		if(increase) {
+			if(cc < 127) {
+				cc++;
+			} else {
+				cc = 0;
+			}
+		} else {
+			if(cc > 0) {
+				cc--;
+			} else {
+				cc = 127;
+			}
+		}
+		// setStateCC(midi_unit_selection, cc);
+		module_states[midi_unit_selection].cc = cc;
+		ui_p->lvgl_loadMidiUnitParameters(&module_states[midi_unit_selection]);
+		ui_p->lvgl_selectMidiParameter(midi_parameter_selection);	// to keep roller not updated
+	}
+	else {
+		if(increase) {
+			if(midi_parameter_selection < 2) {
+				midi_parameter_selection++;
+			} else {
+				midi_parameter_selection = 0;
+			}
+		} else {
+			if(midi_parameter_selection > 0) {
+				midi_parameter_selection--;
+			} else {
+				midi_parameter_selection = 2;
+			}
+		}
+		ui_p->lvgl_selectMidiParameter(midi_parameter_selection); // to keep roller not updated
+	}
+}
+
+
+void TaskOS::setStateChannel(uint8_t module_id, uint8_t channel)
+{
+	if(channel > 16) {
+		return;
+	}
+	module_states[module_id].channel = channel;
+	ui_p->setChannel(module_id, channel);
+}
+
+
+void TaskOS::setStateCC(uint8_t module_id, uint8_t cc)
+{
+	if(cc > 127) {
+		return;
+	}
+	module_states[module_id].cc = cc;
+	ui_p->setCC(module_id, cc);
 }
 
 
@@ -163,10 +376,60 @@ void TaskOS::task(void const *arg)
 				p_this->processEncoderEvent(&encoder_event);
 			}
 			else if(encoder_event.encoder_id == 0) {
-				p_this->processMenuSelector(encoder_event.increase);
+				switch(p_this->current_screen) {
+					case SCREEN_ID_MENU: {
+						p_this->processMenuSelector(encoder_event.increase);
+						break;
+					}
+					case SCREEN_ID_MIDI_BANKS: {
+						p_this->processMidiBankSelector(encoder_event.increase);
+						break;
+					}
+					case SCREEN_ID_UI_PRESETS: {
+						p_this->processUiPresetSelector(encoder_event.increase);
+						break;
+					}
+					case SCREEN_ID_CONFIG_MIDI: {
+						p_this->processMidiUnitSelector(encoder_event.increase);
+						break;
+					}
+					case SCREEN_ID_CONFIG_MIDI_UNIT: {
+						p_this->processMidiParameterSelector(encoder_event.increase);
+						break;
+					}
+					default:
+						break;
+				}
 			}
 		}
 		
+		if(xQueueReceive(p_this->button_event_queue, &button_ev, 0) == pdTRUE) {
+			switch (button_ev.type) {
+				case BUTTON_EVENT_SINGLE_PRESS: {
+					if(p_this->current_screen == SCREEN_ID_MAIN) {
+						if(button_ev.button_id < 16) {
+							// Process single press button events, CC-100..CC-115, values 0/127
+							uint8_t cc_number = 102 + button_ev.button_id;
+							uint8_t cc_value = button_ev.state ? 127 : 0;
+							task_midi.sendMidiCC(0, cc_number, cc_value);
+						}
+					} else if((button_ev.button_id == 0) && (button_ev.state == 1)) {
+						p_this->processMenuButton();
+					}
+					break;
+				}
+				case BUTTON_EVENT_CENTRAL_QUAD_PRESS: {
+					p_this->current_menu_selection = (menu_select_e)0;
+					p_this->ui_p->lvgl_selectMenu(p_this->current_menu_selection);
+					p_this->ui_p->lvgl_loadScreen(0, SCREEN_ID_MENU);
+					p_this->current_screen = SCREEN_ID_MENU;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+
 		if(xQueueReceive(p_this->acm_event_queue, &acm_event, 0) == pdTRUE) {
 			switch(acm_event.type) {
 				case ACM_EVENT_TYPE_SET_NAME: {
@@ -194,21 +457,15 @@ void TaskOS::task(void const *arg)
 				}
 				case ACM_EVENT_TYPE_SET_CHANNEL: {
 					if(acm_event.id < 16) {
-						module_state_t * module_state = &p_this->module_states[acm_event.id];
-						if((acm_event.data[0] >= 1) && (acm_event.data[0] <= 16)) {
-							module_state->channel = acm_event.data[0];
-							p_this->ui_p->setChannel(acm_event.id, module_state->channel);
-						}
+						uint8_t channel = acm_event.data[0];
+						p_this->setStateChannel(acm_event.id, channel);
 					}
 					break;
 				}
 				case ACM_EVENT_TYPE_SET_CC: {
 					if(acm_event.id < 16) {
-						module_state_t * module_state = &p_this->module_states[acm_event.id];
-						if(acm_event.data[0] <= 127) {
-							module_state->cc = acm_event.data[0];
-							p_this->ui_p->setCC(acm_event.id, module_state->cc);
-						}
+						uint8_t cc = acm_event.data[0];
+						p_this->setStateCC(acm_event.id, cc);
 					}
 					break;
 				}
@@ -266,35 +523,6 @@ void TaskOS::task(void const *arg)
 					break;
 			}
 		}
-		
-		if(xQueueReceive(p_this->button_event_queue, &button_ev, 0) == pdTRUE) {
-			switch (button_ev.type) {
-				case BUTTON_EVENT_SINGLE_PRESS: {
-					if(p_this->current_screen == SCREEN_ID_MAIN) {
-						if(button_ev.button_id < 16) {
-							// Process single press button events, CC-100..CC-115, values 0/127
-							uint8_t cc_number = 102 + button_ev.button_id;
-							uint8_t cc_value = button_ev.state ? 127 : 0;
-							task_midi.sendMidiCC(0, cc_number, cc_value);
-						}
-					} else if(button_ev.button_id == 0) {
-						p_this->processMenuButton();
-					}
-					break;
-				}
-				case BUTTON_EVENT_CORNERS_HOLD: {
-					JumpToBootloader();
-					break;
-				}
-				case BUTTON_EVENT_CENTRAL_QUAD_PRESS: {
-					p_this->ui_p->lvgl_loadScreen(0, SCREEN_ID_MENU);
-					p_this->current_screen = SCREEN_ID_MENU;
-					break;
-				}
-				default:
-					break;
-			}
-		}
 
 		if(xQueueReceive(p_this->midi_input_event_queue, &midi_input_ev, 0) == pdTRUE) {
 			vTaskDelay(0);
@@ -332,10 +560,8 @@ void TaskOS::task(void const *arg)
 						if(	(value >= module_state->min_value) && 
 						(value <= module_state->max_value)) {
 							module_state->current_value = acm_event.data[0];
-							// Send MIDI CC event
-							task_midi.sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
-							// Update UI
-							ui.setValue(acm_event.id, module_state->current_value);
+							p_this->task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->current_value);
+							p_this->ui_p->setValue(acm_event.id, module_state->current_value);
 						}
 					}
 					break;
@@ -343,24 +569,16 @@ void TaskOS::task(void const *arg)
 				case MIDI_SYS_SET_CHANNEL: {
 					uint8_t id = sysex_input_ev.buffer[1];
 					if(id < 16) {
-						module_state_t * module_state = &p_this->module_states[id];
 						uint8_t channel = sysex_input_ev.buffer[2];
-						if((channel >= 1) && (channel <= 16)) {
-							module_state->channel = channel;
-							ui.setChannel(id, module_state->channel);
-						}
+						p_this->setStateChannel(id, channel);
 					}
 					break;
 				}
 				case MIDI_SYS_SET_CC: {
 					uint8_t id = sysex_input_ev.buffer[1];
 					if(id < 16) {
-						module_state_t * module_state = &p_this->module_states[id];
 						uint8_t cc = sysex_input_ev.buffer[2];
-						if(cc <= 127) {
-							module_state->cc = cc;
-							ui.setCC(id, module_state->cc);
-						}
+						p_this->setStateCC(id, cc);
 					}
 					break;
 				}
