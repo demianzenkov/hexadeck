@@ -49,6 +49,7 @@ typedef struct {
 class ACM : public TaskPrototype {
 public:
 	void createTask() override;
+	static ACM * getInstance();
 	int sendData(uint8_t * data, size_t len);
 private:
 	static void task_recv(void const *arg);
@@ -61,7 +62,6 @@ private:
 	osThreadId task_send_handle;
 };
 
-extern ACM acm;
 
 #ifdef __cplusplus
 }

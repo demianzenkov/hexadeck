@@ -14,7 +14,13 @@
 
 
 
-TaskEncoder task_encoder;
+// TaskEncoder task_encoder;
+
+TaskEncoder * TaskEncoder::getInstance()
+{
+	static TaskEncoder instance;
+	return &instance;
+}
 
 void TaskEncoder::createTask()
 {

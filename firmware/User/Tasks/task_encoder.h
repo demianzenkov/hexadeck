@@ -37,6 +37,7 @@ typedef struct {
 
 class TaskEncoder : public TaskPrototype {
 public:
+	static TaskEncoder * getInstance();
 	void createTask() override;
 private:
 	static void task(void const *arg);
@@ -45,7 +46,7 @@ public:
 	encoder_state_t encoder_state[16] = {};
 };
 
-extern TaskEncoder task_encoder;
+// extern TaskEncoder task_encoder;
 
 #ifdef __cplusplus
 }

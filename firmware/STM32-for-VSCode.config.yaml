@@ -94,6 +94,7 @@ includeDirectories:
   - User/Modules/nvs
   - User/Modules/protocols
   - User/Modules/ui
+  - User/Modules/os
   - User/Tasks
   - Middlewares/Third_Party/lvgl
   - Middlewares/Third_Party/lvgl/src

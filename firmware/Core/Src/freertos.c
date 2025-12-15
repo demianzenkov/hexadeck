@@ -25,11 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-// #include "task_buttons.h"
-// #include "task_encoder.h"
-// #include "task_lvgl.h"
-// #include "task_midi.h"
-// #include "task_acm.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

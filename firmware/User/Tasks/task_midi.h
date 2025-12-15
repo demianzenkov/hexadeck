@@ -54,6 +54,7 @@ void USBD_MIDI_DataInHandler(uint8_t * usb_rx_buffer, uint8_t usb_rx_buffer_leng
 
 class TaskMIDI : public TaskPrototype {
 public:
+	static TaskMIDI * getInstance();
 	void createTask() override;
 	int sendEvent(midi_event_t * ev);
 	int sendMidiCC(uint8_t ch, uint8_t cc, uint8_t value);
@@ -65,7 +66,6 @@ public:
 	QueueHandle_t midi_output_queue;
 };
 
-extern TaskMIDI task_midi;
 
 #ifdef __cplusplus
 }

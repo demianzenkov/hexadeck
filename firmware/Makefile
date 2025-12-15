@@ -98,6 +98,7 @@ Core/Src/main.cpp \
 Core/Src/stm32f4xx_it.cpp \
 User/Modules/bootloader/bootloader.cpp \
 User/Modules/display/display.cpp \
+User/Modules/nvs/nvs.cpp \
 User/Tasks/task_acm.cpp \
 User/Tasks/task_buttons.cpp \
 User/Tasks/task_encoder.cpp \
@@ -207,6 +208,7 @@ C_INCLUDES =  \
 -IUser/Modules/nvs \
 -IUser/Modules/protocols \
 -IUser/Modules/ui \
+-IUser/Modules/state \
 -IUser/Tasks
 
 

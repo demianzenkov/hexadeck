@@ -14,6 +14,10 @@
 #include "task_lvgl.h"
 #include "task_midi.h"
 #include "task_acm.h"
+#include "api_midi.h"
+#include "nvs.h"
+#include "module_state.h"
+
 
 #define ENCODER_DEFAULT_VALUE 		64
 #define ENCODER_DEFAULT_MIN_VALUE   0
@@ -29,10 +33,8 @@ extern "C" {
 
 
 typedef enum {
-	MENU_SELECT_LOAD_MIDI = 0,
-	MENU_SELECT_SAVE_MIDI,
-	MENU_SELECT_LOAD_UI,
-	MENU_SELECT_SAVE_UI,
+	MENU_SELECT_LOAD_PRESET = 0,
+	MENU_SELECT_SAVE_PRESET,
 	MENU_SELECT_CONFIG_MIDI,
 	MENU_SELECT_AUTOMAPPING,
 	MENU_SELECT_FIRMWARE_UPDATE,
@@ -40,15 +42,7 @@ typedef enum {
 	MENU_SELECT_COUNT,
 } menu_select_e;
 
-typedef struct {
-	uint8_t channel;
-	uint8_t cc;
-	uint8_t min_value;
-	uint8_t max_value;
-	uint8_t current_value;
-	uint8_t step;
-	uint8_t name[16 + 1];
-} module_state_t;
+
 
 typedef enum {
 	ACTION_LOAD = 0,
@@ -64,13 +58,16 @@ private:
 	void processEncoderEvent(encoder_event_t * encoder_event);
 	void processMenuSelector(bool increase);
 	void processMenuButton();
-	void processMidiBankSelector(bool increase);
-	void processUiPresetSelector(bool increase);
+	void processPresetSelector(bool increase);
 	void processMidiUnitSelector(bool increase);
 	void processMidiParameterSelector(bool increase);
 
-	void setStateCC(uint8_t module_id, uint8_t cc);
-	void setStateChannel(uint8_t module_id, uint8_t channel);
+	void setStateValue(uint8_t id, uint8_t value);
+	void setStateChannel(uint8_t id, uint8_t channel);
+	void setStateCC(uint8_t id, uint8_t cc);
+	void setStateRange(uint8_t id, uint8_t max_level);
+	void setStateColor(uint8_t id, color_element_e element, lv_color_t color);
+	void setStateName(uint8_t id, const char *str);
 	
 public:
 	QueueHandle_t encoder_event_queue;
@@ -91,11 +88,11 @@ private:
 	UI * ui_p;
 	TaskMIDI * task_midi_p;
 	TaskEncoder * task_encoder_p;
+	NVS nvs;
 	ScreensEnum current_screen;
 	menu_select_e current_menu_selection;
 	action_load_save_e selected_action;
-	uint8_t midi_bank_selection;	// 4 banks
-	uint8_t ui_preset_selection;	// 4 presets
+	uint8_t preset_selection;	// 4 banks
 	uint8_t midi_unit_selection;	// 16 units
 	uint8_t midi_parameter_selection; // 2 parameters
 	bool midi_parameter_channel_selector_active;

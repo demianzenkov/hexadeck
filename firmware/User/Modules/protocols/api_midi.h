@@ -1,6 +1,5 @@
-#ifndef PROTOCOLS_API_MIDI_H__
+#ifndef PROTOCOLS_API_MIDI_H_
 #define PROTOCOLS_API_MIDI_H_
-
 
 /* USB-MIDI Event Packets
 
@@ -91,12 +90,4 @@ Reset					FF
 #define MIDI_MSG_STATUS_RESET			0xFF
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-} /*extern "C"*/
-#endif
-
-#endif /* PROTOCOLS_API_MIDI_H__ */
+#endif /* PROTOCOLS_API_MIDI_H_ */

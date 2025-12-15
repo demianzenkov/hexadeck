@@ -10,7 +10,11 @@
 #include "bootloader.h"
 
 
-ACM acm;
+ACM * ACM::getInstance()
+{
+	static ACM instance;
+	return &instance;
+}
 
 void ACM::createTask()
 {

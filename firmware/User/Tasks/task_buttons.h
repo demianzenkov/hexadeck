@@ -29,6 +29,8 @@ typedef struct {
 class Buttons : public TaskPrototype {
 public:
 	void createTask() override;
+	static Buttons * getInstance();
+
 private:
 	static void task(void const *arg);
 
@@ -42,8 +44,6 @@ private:
 	uint8_t button_changed[16] = {};
 	uint32_t menu_entry_start = 0;
 };
-
-extern Buttons buttons;
 
 #ifdef __cplusplus
 }

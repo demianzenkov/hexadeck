@@ -427,7 +427,7 @@ static int8_t CDC_Receive(uint8_t cdc_ch, uint8_t *Buf, uint32_t *Len)
 	acm_data_event_t acm_ev = {};
     acm_ev.len = *Len;
     memcpy(acm_ev.buffer, Buf, *Len);
-    if(xQueueSendFromISR(acm.recv_data_queue, &acm_ev, 0) != pdPASS) {
+    if(xQueueSendFromISR(ACM::getInstance()->recv_data_queue, &acm_ev, 0) != pdPASS) {
         return (USBD_OK);
     }
 

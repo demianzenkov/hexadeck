@@ -77,9 +77,13 @@ const ButtonAdcMedian button_adc_medians[16] = {
 };
 */
 
-Buttons buttons;
 extern ADC_HandleTypeDef hadc1;
 
+
+Buttons * Buttons::getInstance() {
+	static Buttons instance;
+	return &instance;
+}
 
 void Buttons::createTask() {
     buttons_ready_sem = xSemaphoreCreateBinary();
@@ -168,5 +172,5 @@ void Buttons::task(void const *arg)
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-    xSemaphoreGiveFromISR(buttons.buttons_ready_sem, NULL);
+    xSemaphoreGiveFromISR(Buttons::getInstance()->buttons_ready_sem, NULL);
 }

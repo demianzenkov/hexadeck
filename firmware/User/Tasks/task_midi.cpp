@@ -11,13 +11,16 @@
 #include "usbd_midi.h"
 #include "usbd_midi_if.h"
 
-TaskMIDI task_midi;
-
 
 //uint8_t midi_msg_buffer[4];
 extern USBD_HandleTypeDef hUsbDevice;
 
 
+TaskMIDI * TaskMIDI::getInstance()
+{
+	static TaskMIDI instance;
+	return &instance;
+}
 
 void TaskMIDI::createTask() {
 	midi_data_input_queue = xQueueCreate(8, sizeof(midi_data_ev_t));
@@ -174,6 +177,7 @@ void USBD_MIDI_DataInHandler(uint8_t *usb_rx_buffer, uint8_t usb_rx_buffer_lengt
 	}
 	memcpy(midi_data_ev.buffer, usb_rx_buffer, usb_rx_buffer_length);
 	midi_data_ev.len = usb_rx_buffer_length;
-	xQueueSendFromISR(task_midi.midi_data_input_queue, &midi_data_ev, NULL);
+
+	xQueueSendFromISR(TaskMIDI::getInstance()->midi_data_input_queue, &midi_data_ev, NULL);
 }
 

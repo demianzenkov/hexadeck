@@ -46,7 +46,7 @@ static void lcd_color_transfer_ready_cb(SPI_HandleTypeDef *hspi) {
 	/* CS high */
 	HAL_GPIO_WritePin(ds_active->cs_port, ds_active->cs_pin, GPIO_PIN_SET);
 	lcd_bus_busy = 0;
-	lv_display_flush_ready(ui.lcd_disp);
+	lv_display_flush_ready(UI::getInstance()->lcd_disp);
 }
 
 /* Initialize LCD I/O bus, reset LCD */

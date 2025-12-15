@@ -181,7 +181,7 @@ void create_screen_menu() {
             objects.menu_roller = obj;
             lv_obj_set_pos(obj, 0, 0);
             lv_obj_set_size(obj, 160, 80);
-            lv_roller_set_options(obj, "Load MIDI preset\nSave MIDI preset\nLoad UI preset\nSave UI preset\nConfig MIDI\nAutomapping\nFirmware Update\nExit", LV_ROLLER_MODE_INFINITE);
+            lv_roller_set_options(obj, "Load Preset\nSave Preset\nConfig MIDI\nAutomapping\nFirmware Update\nExit", LV_ROLLER_MODE_INFINITE);
             lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
             lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -197,9 +197,9 @@ void create_screen_menu() {
 void tick_screen_menu() {
 }
 
-void create_screen_midi_banks() {
+void create_screen_presets() {
     lv_obj_t *obj = lv_obj_create(0);
-    objects.midi_banks = obj;
+    objects.presets = obj;
     lv_obj_set_pos(obj, 0, 0);
     lv_obj_set_size(obj, 160, 80);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_SNAPPABLE|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER);
@@ -209,36 +209,6 @@ void create_screen_midi_banks() {
             // midi_banks_roller
             lv_obj_t *obj = lv_roller_create(parent_obj);
             objects.midi_banks_roller = obj;
-            lv_obj_set_pos(obj, 0, 0);
-            lv_obj_set_size(obj, 160, 80);
-            lv_roller_set_options(obj, "Bank 1\nBank 2\nBank 3\nBank 4\nReturn", LV_ROLLER_MODE_INFINITE);
-            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
-            lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_border_color(obj, lv_color_hex(0xff000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_text_line_space(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_bg_color(obj, lv_color_hex(0xff000000), LV_PART_SELECTED | LV_STATE_DEFAULT);
-        }
-    }
-    
-    tick_screen_midi_banks();
-}
-
-void tick_screen_midi_banks() {
-}
-
-void create_screen_ui_presets() {
-    lv_obj_t *obj = lv_obj_create(0);
-    objects.ui_presets = obj;
-    lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 160, 80);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_SNAPPABLE|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER);
-    {
-        lv_obj_t *parent_obj = obj;
-        {
-            // ui_presets_roller
-            lv_obj_t *obj = lv_roller_create(parent_obj);
-            objects.ui_presets_roller = obj;
             lv_obj_set_pos(obj, 0, 0);
             lv_obj_set_size(obj, 160, 80);
             lv_roller_set_options(obj, "Preset 1\nPreset 2\nPreset 3\nPreset 4\nReturn", LV_ROLLER_MODE_INFINITE);
@@ -251,10 +221,10 @@ void create_screen_ui_presets() {
         }
     }
     
-    tick_screen_ui_presets();
+    tick_screen_presets();
 }
 
-void tick_screen_ui_presets() {
+void tick_screen_presets() {
 }
 
 void create_screen_config_midi() {
@@ -326,8 +296,7 @@ typedef void (*tick_screen_func_t)();
 tick_screen_func_t tick_screen_funcs[] = {
     tick_screen_main,
     tick_screen_menu,
-    tick_screen_midi_banks,
-    tick_screen_ui_presets,
+    tick_screen_presets,
     tick_screen_config_midi,
     tick_screen_config_midi_unit,
 };
@@ -345,8 +314,7 @@ void create_screens() {
     
     create_screen_main();
     create_screen_menu();
-    create_screen_midi_banks();
-    create_screen_ui_presets();
+    create_screen_presets();
     create_screen_config_midi();
     create_screen_config_midi_unit();
 }
