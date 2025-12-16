@@ -10,7 +10,6 @@
 #include "cmsis_os.h"
 #include "task_prototype.h"
 #include "task_buttons.h"
-#include "task_encoder.h"
 #include "task_lvgl.h"
 #include "task_midi.h"
 #include "task_acm.h"
@@ -43,6 +42,10 @@ typedef enum {
 } menu_select_e;
 
 
+typedef struct {
+	bool increase;		// true - increase, false - decrease
+	uint8_t encoder_id;
+} encoder_event_t;
 
 typedef enum {
 	ACTION_LOAD = 0,
@@ -52,6 +55,7 @@ typedef enum {
 class TaskOS : public TaskPrototype {
 public:
 	TaskOS();
+	static TaskOS * getInstance();
 	void createTask();
 private:
 	static void task(void const *arg);
@@ -87,7 +91,6 @@ private:
 	Buttons * buttons_p;
 	UI * ui_p;
 	TaskMIDI * task_midi_p;
-	TaskEncoder * task_encoder_p;
 	NVS nvs;
 	ScreensEnum current_screen;
 	menu_select_e current_menu_selection;
@@ -97,9 +100,8 @@ private:
 	uint8_t midi_parameter_selection; // 2 parameters
 	bool midi_parameter_channel_selector_active;
 	bool midi_parameter_cc_selector_active;
+	uint32_t last_encoder_event_time[16] = {0};
 };
-
-extern TaskOS task_os;
 
 #ifdef __cplusplus
 }

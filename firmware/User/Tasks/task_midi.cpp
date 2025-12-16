@@ -150,7 +150,7 @@ void TaskMIDI::task(void const *arg)
 					if(midi_data_ev.buffer[1] == MIDI_MSG_STATUS_SYSEX_START) {
 						midi_sysex_event_t sysex_ev = {};
 						if(p_this->parseSysexMessage(midi_data_ev.buffer, midi_data_ev.len, &sysex_ev) == 0) {
-							xQueueSend(task_os.midi_sysex_input_event_queue, &sysex_ev, 0);
+							xQueueSend(TaskOS::getInstance()->midi_sysex_input_event_queue, &sysex_ev, 0);
 						}
 					}
 					continue;
@@ -161,7 +161,7 @@ void TaskMIDI::task(void const *arg)
 					continue;
 			}
 			
-			xQueueSend(task_os.midi_input_event_queue, &midi_ev, 0);
+			xQueueSend(TaskOS::getInstance()->midi_input_event_queue, &midi_ev, 0);
 		}
 
 		vTaskDelay(1);

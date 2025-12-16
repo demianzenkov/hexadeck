@@ -69,7 +69,7 @@ void ACM::parseInputBuffer(char *buffer)
 			acm_event.type = ACM_EVENT_TYPE_SET_NAME;
 			acm_event.id = disp_id - 1;
 			memcpy(acm_event.data, cmd, str_len - 1);
-			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 		} else {
 			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
@@ -94,7 +94,7 @@ void ACM::parseInputBuffer(char *buffer)
 			acm_event.type = ACM_EVENT_TYPE_SET_VALUE;
 			acm_event.id = disp_id - 1;
 			acm_event.data[0] = (uint8_t)level;
-			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 			
 			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 			return;
@@ -121,7 +121,7 @@ void ACM::parseInputBuffer(char *buffer)
 			acm_event.type = ACM_EVENT_TYPE_SET_CHANNEL;
 			acm_event.id = disp_id - 1;
 			acm_event.data[0] = (uint8_t)channel;
-			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 		} else {
 			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
@@ -146,7 +146,7 @@ void ACM::parseInputBuffer(char *buffer)
 			acm_event.type = ACM_EVENT_TYPE_SET_CC;
 			acm_event.id = disp_id - 1;
 			acm_event.data[0] = (uint8_t)cc_number;
-			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 		} else {
 			sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
@@ -171,7 +171,7 @@ void ACM::parseInputBuffer(char *buffer)
 			acm_event.type = ACM_EVENT_TYPE_SET_RANGE;
 			acm_event.id = disp_id - 1;
 			acm_event.data[0] = (uint8_t)max_level;
-			xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+			xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 			sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 			return;
 		} else {
@@ -216,7 +216,7 @@ void ACM::parseInputBuffer(char *buffer)
 				acm_event.data[0] = r;
 				acm_event.data[1] = g;
 				acm_event.data[2] = b;
-				xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+				xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 				sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 			} else {
 				sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);
@@ -231,7 +231,7 @@ void ACM::parseInputBuffer(char *buffer)
 		sendData((uint8_t *)ACM_RESPONSE_OK, ACM_RESPONSE_OK_LEN);
 		HAL_Delay(100);
 		acm_event.type = ACM_EVENT_FIRMWARE_UPDATE;
-		xQueueSend(task_os.acm_event_queue, &acm_event, 0);
+		xQueueSend(TaskOS::getInstance()->acm_event_queue, &acm_event, 0);
 	}
 	else {
 		sendData((uint8_t *)ACM_RESPONSE_FAIL, ACM_RESPONSE_FAIL_LEN);

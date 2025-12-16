@@ -107,8 +107,8 @@ extern "C" int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_TIM_Base_Start(&htim3);
 
-
-  task_os.createTask();
+  TaskOS * task_os = TaskOS::getInstance();
+  task_os->createTask();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

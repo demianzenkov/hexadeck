@@ -1,7 +1,6 @@
 #include "task_os.h"
 #include "bootloader.h"
 
-TaskOS task_os;
 
 
 TaskOS::TaskOS()
@@ -9,7 +8,6 @@ TaskOS::TaskOS()
 	ui_p = UI::getInstance();
 	task_midi_p = TaskMIDI::getInstance();
 	buttons_p = Buttons::getInstance();
-	task_encoder_p = TaskEncoder::getInstance();
 	acm_p = ACM::getInstance();
 
 	const module_state_t init_states[16] = {
@@ -34,16 +32,6 @@ TaskOS::TaskOS()
 		memcpy(&module_states[i], &init_states[i], sizeof(module_state_t));
 	}
 
-	// for (uint8_t i = 0; i < 16; i++)
-	// {
-	// 	module_states[i].channel = MIDI_DEFAULT_CHANNEL;	// channel
-	// 	module_states[i].cc = i;							// cc number
-	// 	module_states[i].min_value = ENCODER_DEFAULT_MIN_VALUE;
-	// 	module_states[i].max_value = ENCODER_DEFAULT_MAX_VALUE;
-	// 	module_states[i].current_value = ENCODER_DEFAULT_VALUE;
-	// 	module_states[i].step = ENCODER_DEFAULT_STEP;
-	// 	strncpy((char *)module_states[i].name, ui_p->ui_states[i].name, sizeof(module_states[i].name));
-	// }
 
 	current_screen = SCREEN_ID_MAIN;
 	current_menu_selection = MENU_SELECT_LOAD_PRESET;
@@ -51,10 +39,16 @@ TaskOS::TaskOS()
 	midi_parameter_cc_selector_active = false;
 }
 
+TaskOS * TaskOS::getInstance()
+{
+	static TaskOS instance;
+	return &instance;
+}
+
 
 void TaskOS::createTask()
 {
-	encoder_event_queue = xQueueCreate(32, sizeof(encoder_event_t));
+	encoder_event_queue = xQueueCreate(64, sizeof(encoder_event_t));
 	acm_event_queue = xQueueCreate(16, sizeof(acm_event_t));
 	midi_input_event_queue = xQueueCreate(32, sizeof(midi_event_t));
 	midi_sysex_input_event_queue = xQueueCreate(8, sizeof(midi_sysex_event_t));
@@ -63,7 +57,6 @@ void TaskOS::createTask()
 	ui_p->createTask();
 	task_midi_p->createTask();
 	buttons_p->createTask();
-	task_encoder_p->createTask();
 	acm_p->createTask();
 
 	osThreadDef(OSTask, task, osPriorityNormal, 0, 512);
@@ -91,7 +84,9 @@ void TaskOS::processEncoderEvent(encoder_event_t * encoder_event)
 		}
 		task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->value);
 		module_states[enc_id].value = module_state->value;
-		ui_p->refreshDisplayState(enc_id, module_state);
+
+		// ui_p->refreshDisplayState(enc_id, module_state);
+		ui_p->refreshDisplayValue(enc_id, module_state->value);
 		// ui_p->setValue(enc_id, module_state->value);
 	}
 }
@@ -442,12 +437,19 @@ void TaskOS::task(void const *arg)
 	/* Set UI for modules states */
 	for(int i = 0; i < 16; i++) {
 		p_this->ui_p->refreshDisplayState(i, &p_this->module_states[i]);
-		vTaskDelay(10);
+		vTaskDelay(30);
 	}
 
 	while (1)
 	{
 		if(xQueueReceive(p_this->encoder_event_queue, &encoder_event, 0) == pdTRUE) {
+			// debouncer, if passed time less for channel less than 10 ms, ignore event
+			uint32_t current_time = xTaskGetTickCount();
+			if((current_time - p_this->last_encoder_event_time[encoder_event.encoder_id]) < 10) {
+				continue;
+			}
+			p_this->last_encoder_event_time[encoder_event.encoder_id] = current_time;
+
 			if(p_this->current_screen == SCREEN_ID_MAIN) {
 				p_this->processEncoderEvent(&encoder_event);
 			}

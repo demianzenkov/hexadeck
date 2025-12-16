@@ -53,33 +53,6 @@ static const uint8_t init_cmd_list[] = {
 	LV_LCD_CMD_DELAY_MS, LV_LCD_CMD_EOF};
 
 
-UI::UI()
-{
-	// const ui_state_t init_states[16] = {
-	// 	{0,  64, 127, 1, 0, 0, "Bank", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{1,  64, 127, 1, 0, 1, "Wheel", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{2,  64, 127, 1, 0, 2, "Breath", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{3,  64, 127, 1, 0, 3, "CC-3", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{4,  64, 127, 1, 0, 4, "Foot", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{5,  64, 127, 1, 0, 5, "Portamento", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{6,  64, 127, 1, 0, 6, "Data Entry", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{7,  64, 127, 1, 0, 7, "Volume", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{8,	 64, 127, 1, 0, 8, "Balance", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{9,  64, 127, 1, 0, 9, "CC-9", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{10, 64, 127, 1, 0, 10, "Pan", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{11, 64, 127, 1, 0, 11, "Expression", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{12, 64, 127, 1, 0, 12, "Effect-1", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{13, 64, 127, 1, 0, 13, "Effect-2", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{14, 64, 127, 1, 0, 14, "CC-14", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-	// 	{15, 64, 127, 1, 0, 15, "CC-15", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)}
-	// };
-	// Copy the initialization data to the member array
-	// for (int i = 0; i < 16; i++) {
-	// 	memcpy(&ui_states[i], &init_states[i], sizeof(ui_state_t));
-	// }
-}
-
-
 UI * UI::getInstance()
 {
 	static UI instance;
@@ -94,6 +67,7 @@ void UI::createTask()
 	xSemaphoreTake(lvgl_ready_sem, 0);
 
 	ui_update_queue = xQueueCreate(64, sizeof(module_state_t *));
+	ui_value_queue = xQueueCreate(64, sizeof(value_update_t));
 
 	osThreadDef(lvglTask, taskLVGL, osPriorityNormal, 0, 1024);
 	lvglTaskHandle = osThreadCreate(osThread(lvglTask), this);
@@ -112,7 +86,7 @@ void UI::taskUI(void const *arg)
 {
 	UI *p_this = (UI *)arg;
 	module_state_t * ui_state;
-	
+	value_update_t value_update;
 	xSemaphoreTake(p_this->lvgl_ready_sem, portMAX_DELAY);
 	
 	xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
@@ -123,12 +97,18 @@ void UI::taskUI(void const *arg)
 	
 	for (;;)
 	{
-		if(xQueueReceive(p_this->ui_update_queue, &ui_state, portMAX_DELAY) == pdTRUE) {
+		if(xQueueReceive(p_this->ui_update_queue, &ui_state, 0) == pdTRUE) {
 			while((p_this->lcd_disp->flushing) || (p_this->lcd_disp->rendering_in_progress)) {
 			}
 			p_this->lvgl_setUiState(ui_state);
 			vTaskDelay(30);
 		}
+		if(xQueueReceive(p_this->ui_value_queue, &value_update, 0) == pdTRUE) {
+			p_this->lvgl_setValue(value_update);
+			vTaskDelay(5);
+		}
+		vTaskDelay(1);
+		// implement queue for value changes
 	}
 }
 
@@ -197,6 +177,16 @@ void UI::refreshDisplayState(uint8_t disp, module_state_t * state)
 }
 
 
+void UI::refreshDisplayValue(uint8_t disp, uint8_t value)
+{
+	value_update_t state = {
+		.id = disp,
+		.value = value
+	};
+	xQueueSend(ui_value_queue, &state, portMAX_DELAY);
+}
+
+
 void UI::lvgl_setUiState(module_state_t * state)
 {
 	if (state->display_id > 15)
@@ -211,6 +201,53 @@ void UI::lvgl_setUiState(module_state_t * state)
 	set_active_display(state->display_id);
 
 	// Always update if display_id changed, otherwise only if value changed
+	// if(force_update || memcmp(&current_ui_state, state, sizeof(module_state_t)) != 0) {
+	// 	// Update needed
+	
+	// 	lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
+	// 	char value_str[6] = {};
+	// 	snprintf(value_str, sizeof(value_str), "%d", state->value);
+	// 	lv_label_set_text(objects.level_label, value_str);
+	
+	// 	lv_bar_set_range(objects.level_bar, 0, current_ui_state.max_value);
+	
+	// 	current_ui_state.channel = state->channel;
+	// 	char channel_str[MAX_CH_LABEL_LENGTH] = {};
+	// 	snprintf(channel_str, sizeof(channel_str), "CH-%d", state->channel+1);
+	// 	lv_label_set_text(objects.channel_label, channel_str);
+	
+	// 	current_ui_state.cc = state->cc;
+	// 	char cc_str[MAX_CC_LABEL_LENGTH] = {};
+	// 	snprintf(cc_str, sizeof(cc_str), "CC-%d", state->cc);
+	// 	lv_label_set_text(objects.cc_label, cc_str);
+	
+	// 	strncpy(current_ui_state.name, state->name, sizeof(current_ui_state.name));
+	// 	lv_label_set_text(objects.name_label, state->name);
+	
+	// 	lv_obj_set_style_bg_color(objects.level_bar, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_bg_opa(objects.level_bar, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+	
+	// 	lv_obj_set_style_border_color(objects.general_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_border_color(objects.channel_pannel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_border_color(objects.name_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_border_color(objects.cc_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_border_color(objects.range_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	
+	// 	lv_obj_set_style_text_color(objects.name_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_text_color(objects.channel_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_text_color(objects.level_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_text_color(objects.cc_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_text_color(objects.range_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	
+	
+	// 	lv_obj_set_style_bg_color(objects.general_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_bg_color(objects.channel_pannel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_bg_color(objects.name_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_bg_color(objects.cc_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// 	lv_obj_set_style_bg_color(objects.range_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// 	memcpy(&current_ui_state, state, sizeof(module_state_t));
+	// }
 	if(force_update || (current_ui_state.value != state->value)) {
 		current_ui_state.value = state->value;
 		lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
@@ -267,6 +304,25 @@ void UI::lvgl_setUiState(module_state_t * state)
 		lv_obj_set_style_bg_color(objects.cc_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 		lv_obj_set_style_bg_color(objects.range_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 	}
+
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+
+void UI::lvgl_setValue(value_update_t value)
+{
+	if (value.id > 15)
+	{
+		return;
+	}
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	
+	set_active_display(value.id);
+
+	lv_bar_set_value(objects.level_bar, value.value, LV_ANIM_OFF);
+	char value_str[6] = {};
+	snprintf(value_str, sizeof(value_str), "%d", value.value);
+	lv_label_set_text(objects.level_label, value_str);
 
 	xSemaphoreGive(ui_busy_mutex);
 }

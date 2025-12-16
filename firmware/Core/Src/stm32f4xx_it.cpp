@@ -23,7 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lvgl/src/tick/lv_tick.h"
-#include "task_encoder.h"
+#include "task_os.h"
 #include "cmsis_os.h"
 /* USER CODE END Includes */
 
@@ -182,13 +182,6 @@ void EXTI0_IRQHandler(void)
 	/* USER CODE END EXTI0_IRQn 0 */
 	HAL_GPIO_EXTI_IRQHandler(ENC11_A_Pin);
 	/* USER CODE BEGIN EXTI0_IRQn 1 */
-	encoder_state_t *enc_state = &TaskEncoder::getInstance()->encoder_state[0];
-	enc_state->prev_state_a = enc_state->state_a;
-	enc_state->state_a = HAL_GPIO_ReadPin(ENC11_A_GPIO_Port, ENC11_A_Pin);
-	enc_state->prev_state_b = enc_state->state_b;
-	enc_state->state_b = HAL_GPIO_ReadPin(ENC11_B_GPIO_Port, ENC11_B_Pin);
-	xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state, NULL);
-
 	/* USER CODE END EXTI0_IRQn 1 */
 }
 
@@ -202,12 +195,6 @@ void EXTI1_IRQHandler(void)
 	/* USER CODE END EXTI1_IRQn 0 */
 	HAL_GPIO_EXTI_IRQHandler(ENC31_A_Pin);
 	/* USER CODE BEGIN EXTI1_IRQn 1 */
-	encoder_state_t *enc_state = &TaskEncoder::getInstance()->encoder_state[8];
-	enc_state->prev_state_a = enc_state->state_a;
-	enc_state->state_a = HAL_GPIO_ReadPin(ENC31_A_GPIO_Port, ENC31_A_Pin);
-	enc_state->prev_state_b = enc_state->state_b;
-	enc_state->state_b = HAL_GPIO_ReadPin(ENC31_B_GPIO_Port, ENC31_B_Pin);
-	xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state, NULL);
 	/* USER CODE END EXTI1_IRQn 1 */
 }
 
@@ -221,12 +208,6 @@ void EXTI2_IRQHandler(void)
 	/* USER CODE END EXTI2_IRQn 0 */
 	HAL_GPIO_EXTI_IRQHandler(ENC12_A_Pin);
 	/* USER CODE BEGIN EXTI2_IRQn 1 */
-	encoder_state_t *enc_state = &TaskEncoder::getInstance()->encoder_state[1];
-	enc_state->prev_state_a = enc_state->state_a;
-	enc_state->state_a = HAL_GPIO_ReadPin(ENC12_A_GPIO_Port, ENC12_A_Pin);
-	enc_state->prev_state_b = enc_state->state_b;
-	enc_state->state_b = HAL_GPIO_ReadPin(ENC12_B_GPIO_Port, ENC12_B_Pin);
-	xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state, NULL);
 	/* USER CODE END EXTI2_IRQn 1 */
 }
 
@@ -241,12 +222,6 @@ void EXTI3_IRQHandler(void)
 	/* USER CODE END EXTI3_IRQn 0 */
 	HAL_GPIO_EXTI_IRQHandler(ENC32_A_Pin);
 	/* USER CODE BEGIN EXTI3_IRQn 1 */
-	encoder_state_t *enc_state = &TaskEncoder::getInstance()->encoder_state[9];
-	enc_state->prev_state_a = enc_state->state_a;
-	enc_state->state_a = HAL_GPIO_ReadPin(ENC32_A_GPIO_Port, ENC32_A_Pin);
-	enc_state->prev_state_b = enc_state->state_b;
-	enc_state->state_b = HAL_GPIO_ReadPin(ENC32_B_GPIO_Port, ENC32_B_Pin);
-	xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state, NULL);
 	/* USER CODE END EXTI3_IRQn 1 */
 }
 /**
@@ -259,13 +234,6 @@ void EXTI4_IRQHandler(void)
 	/* USER CODE END EXTI4_IRQn 0 */
 	HAL_GPIO_EXTI_IRQHandler(ENC13_A_Pin);
 	/* USER CODE BEGIN EXTI4_IRQn 1 */
-	encoder_state_t *enc_state = &TaskEncoder::getInstance()->encoder_state[2];
-	enc_state->prev_state_a = enc_state->state_a;
-	enc_state->state_a = HAL_GPIO_ReadPin(ENC13_A_GPIO_Port, ENC13_A_Pin);
-	enc_state->prev_state_b = enc_state->state_b;
-	enc_state->state_b = HAL_GPIO_ReadPin(ENC13_B_GPIO_Port, ENC13_B_Pin);
-	xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state, NULL);
-
 	/* USER CODE END EXTI4_IRQn 1 */
 }
 
@@ -312,76 +280,7 @@ void EXTI9_5_IRQHandler(void)
 	HAL_GPIO_EXTI_IRQHandler(ENC41_A_Pin);
 
 	/* USER CODE BEGIN EXTI9_5_IRQn 1 */
-	encoder_state_t *enc_state_33 = &TaskEncoder::getInstance()->encoder_state[10];
-	if (enc_state_33->prev_state_a != enc_state_33->state_a)
-	{
-		enc_state_33->prev_state_a = enc_state_33->state_a;
-		enc_state_33->state_a = HAL_GPIO_ReadPin(ENC33_A_GPIO_Port, ENC33_A_Pin);
-		enc_state_33->prev_state_b = enc_state_33->state_b;
-		enc_state_33->state_b = HAL_GPIO_ReadPin(ENC33_B_GPIO_Port, ENC33_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_33, NULL);
-	}
-	else
-	{
-		enc_state_33->state_a = HAL_GPIO_ReadPin(ENC33_A_GPIO_Port, ENC33_A_Pin);
-	}
-
-	encoder_state_t *enc_state_14 = &TaskEncoder::getInstance()->encoder_state[3];
-	if (enc_state_14->prev_state_b != enc_state_14->state_b)
-	{
-		enc_state_14->prev_state_a = enc_state_14->state_a;
-		enc_state_14->state_a = HAL_GPIO_ReadPin(ENC14_A_GPIO_Port, ENC14_A_Pin);
-		enc_state_14->prev_state_b = enc_state_14->state_b;
-		enc_state_14->state_b = HAL_GPIO_ReadPin(ENC14_B_GPIO_Port, ENC14_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_14, NULL);
-	}
-	else
-	{
-		enc_state_14->state_b = HAL_GPIO_ReadPin(ENC14_B_GPIO_Port, ENC14_B_Pin);
-	}
-
-	encoder_state_t *enc_state_34 = &TaskEncoder::getInstance()->encoder_state[11];
-	if (enc_state_34->prev_state_a != enc_state_34->state_a)
-	{
-		enc_state_34->prev_state_a = enc_state_34->state_a;
-		enc_state_34->state_a = HAL_GPIO_ReadPin(ENC34_A_GPIO_Port, ENC34_A_Pin);
-		enc_state_34->prev_state_b = enc_state_34->state_b;
-		enc_state_34->state_b = HAL_GPIO_ReadPin(ENC34_B_GPIO_Port, ENC34_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_34, NULL);
-	}
-	else
-	{
-		enc_state_34->state_a = HAL_GPIO_ReadPin(ENC34_A_GPIO_Port, ENC34_A_Pin);
-	}
-
-	encoder_state_t *enc_state_21 = &TaskEncoder::getInstance()->encoder_state[4];
-	if (enc_state_21->prev_state_a != enc_state_21->state_a)
-	{
-		enc_state_21->prev_state_a = enc_state_21->state_a;
-		enc_state_21->state_a = HAL_GPIO_ReadPin(ENC21_A_GPIO_Port, ENC21_A_Pin);
-		enc_state_21->prev_state_b = enc_state_21->state_b;
-		enc_state_21->state_b = HAL_GPIO_ReadPin(ENC21_B_GPIO_Port, ENC21_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_21, NULL);
-	}
-	else
-	{
-		enc_state_21->state_a = HAL_GPIO_ReadPin(ENC21_A_GPIO_Port, ENC21_A_Pin);
-	}
-
-	encoder_state_t *enc_state_41 = &TaskEncoder::getInstance()->encoder_state[12];
-	if (enc_state_41->prev_state_a != enc_state_41->state_a)
-	{
-		enc_state_41->prev_state_a = enc_state_41->state_a;
-		enc_state_41->state_a = HAL_GPIO_ReadPin(ENC41_A_GPIO_Port, ENC41_A_Pin);
-		enc_state_41->prev_state_b = enc_state_41->state_b;
-		enc_state_41->state_b = HAL_GPIO_ReadPin(ENC41_B_GPIO_Port, ENC41_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_41, NULL);
-	}
-	else
-	{
-		enc_state_41->state_a = HAL_GPIO_ReadPin(ENC41_A_GPIO_Port, ENC41_A_Pin);
-	}
-
+	
 	/* USER CODE END EXTI9_5_IRQn 1 */
 }
 
@@ -443,13 +342,13 @@ void SPI2_IRQHandler(void)
 
 void SPI3_IRQHandler(void)
 {
-  /* USER CODE BEGIN SPI3_IRQn 0 */
+	/* USER CODE BEGIN SPI3_IRQn 0 */
 
-  /* USER CODE END SPI3_IRQn 0 */
-  HAL_SPI_IRQHandler(&hspi3);
-  /* USER CODE BEGIN SPI3_IRQn 1 */
-  /* USER CODE END SPI3_IRQn 1 */
-}	
+	/* USER CODE END SPI3_IRQn 0 */
+	HAL_SPI_IRQHandler(&hspi3);
+	/* USER CODE BEGIN SPI3_IRQn 1 */
+	/* USER CODE END SPI3_IRQn 1 */
+}
 
 /**
  * @brief This function handles EXTI line[15:10] interrupts.
@@ -466,90 +365,6 @@ void EXTI15_10_IRQHandler(void)
 	HAL_GPIO_EXTI_IRQHandler(ENC24_A_Pin);
 	HAL_GPIO_EXTI_IRQHandler(ENC44_A_Pin);
 	/* USER CODE BEGIN EXTI15_10_IRQn 1 */
-
-	encoder_state_t *enc_state_22 = &TaskEncoder::getInstance()->encoder_state[5];
-	if (enc_state_22->prev_state_a != enc_state_22->state_a)
-	{
-		enc_state_22->prev_state_a = enc_state_22->state_a;
-		enc_state_22->state_a = HAL_GPIO_ReadPin(ENC22_A_GPIO_Port, ENC22_A_Pin);
-		enc_state_22->prev_state_b = enc_state_22->state_b;
-		enc_state_22->state_b = HAL_GPIO_ReadPin(ENC22_B_GPIO_Port, ENC22_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_22, NULL);
-	}
-	else
-	{
-		enc_state_22->state_a = HAL_GPIO_ReadPin(ENC22_A_GPIO_Port, ENC22_A_Pin);
-	}
-
-	encoder_state_t *enc_state_42 = &TaskEncoder::getInstance()->encoder_state[13];
-	if (enc_state_42->prev_state_a != enc_state_42->state_a)
-	{
-		enc_state_42->prev_state_a = enc_state_42->state_a;
-		enc_state_42->state_a = HAL_GPIO_ReadPin(ENC42_A_GPIO_Port, ENC42_A_Pin);
-		enc_state_42->prev_state_b = enc_state_42->state_b;
-		enc_state_42->state_b = HAL_GPIO_ReadPin(ENC42_B_GPIO_Port, ENC42_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_42, NULL);
-	}
-	else
-	{
-		enc_state_42->state_a = HAL_GPIO_ReadPin(ENC42_A_GPIO_Port, ENC42_A_Pin);
-	}
-
-	encoder_state_t *enc_state_23 = &TaskEncoder::getInstance()->encoder_state[6];
-	if (enc_state_23->prev_state_a != enc_state_23->state_a)
-	{
-		enc_state_23->prev_state_a = enc_state_23->state_a;
-		enc_state_23->state_a = HAL_GPIO_ReadPin(ENC23_A_GPIO_Port, ENC23_A_Pin);
-		enc_state_23->prev_state_b = enc_state_23->state_b;
-		enc_state_23->state_b = HAL_GPIO_ReadPin(ENC23_B_GPIO_Port, ENC23_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_23, NULL);
-	}
-	else
-	{
-		enc_state_23->state_a = HAL_GPIO_ReadPin(ENC23_A_GPIO_Port, ENC23_A_Pin);
-	}
-
-	encoder_state_t *enc_state_43 = &TaskEncoder::getInstance()->encoder_state[14];
-	if (enc_state_43->prev_state_a != enc_state_43->state_a)
-	{
-		enc_state_43->prev_state_a = enc_state_43->state_a;
-		enc_state_43->state_a = HAL_GPIO_ReadPin(ENC43_A_GPIO_Port, ENC43_A_Pin);
-		enc_state_43->prev_state_b = enc_state_43->state_b;
-		enc_state_43->state_b = HAL_GPIO_ReadPin(ENC43_B_GPIO_Port, ENC43_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_43, NULL);
-	}
-	else
-	{
-		enc_state_43->state_a = HAL_GPIO_ReadPin(ENC43_A_GPIO_Port, ENC43_A_Pin);
-	}
-	
-	encoder_state_t *enc_state_24 = &TaskEncoder::getInstance()->encoder_state[7];
-	if (enc_state_24->prev_state_a != enc_state_24->state_a)
-	{
-		enc_state_24->prev_state_a = enc_state_24->state_a;
-		enc_state_24->state_a = HAL_GPIO_ReadPin(ENC24_A_GPIO_Port, ENC24_A_Pin);
-		enc_state_24->prev_state_b = enc_state_24->state_b;
-		enc_state_24->state_b = HAL_GPIO_ReadPin(ENC24_B_GPIO_Port, ENC24_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_24, NULL);
-	}
-	else
-	{
-		enc_state_24->state_a = HAL_GPIO_ReadPin(ENC24_A_GPIO_Port, ENC24_A_Pin);
-	}
-
-	encoder_state_t *enc_state_44 = &TaskEncoder::getInstance()->encoder_state[15];
-	if (enc_state_44->prev_state_a != enc_state_44->state_a)
-	{
-		enc_state_44->prev_state_a = enc_state_44->state_a;
-		enc_state_44->state_a = HAL_GPIO_ReadPin(ENC44_A_GPIO_Port, ENC44_A_Pin);
-		enc_state_44->prev_state_b = enc_state_44->state_b;
-		enc_state_44->state_b = HAL_GPIO_ReadPin(ENC44_B_GPIO_Port, ENC44_B_Pin);
-		xQueueSendFromISR(TaskEncoder::getInstance()->encoder_state_queue, &enc_state_44, NULL);
-	}
-	else
-	{
-		enc_state_44->state_a = HAL_GPIO_ReadPin(ENC44_A_GPIO_Port, ENC44_A_Pin);
-	}
 	/* USER CODE END EXTI15_10_IRQn 1 */
 }
 
@@ -635,5 +450,100 @@ void SPI4_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	TaskOS * task_os = TaskOS::getInstance();
+	encoder_event_t enc_ev;
+	switch (GPIO_Pin) {
+		case ENC11_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC11_B_GPIO_Port, ENC11_B_Pin)); 
+			enc_ev.encoder_id = 0;
+			break;
+		}
+		case ENC12_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC12_B_GPIO_Port, ENC12_B_Pin)); 
+			enc_ev.encoder_id = 1;
+			break;
+		}
+		case ENC13_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC13_B_GPIO_Port, ENC13_B_Pin)); 
+			enc_ev.encoder_id = 2;
+			break;
+		}
+		case ENC14_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC14_B_GPIO_Port, ENC14_B_Pin)); 
+			enc_ev.encoder_id = 3;
+			break;
+		}
+		case ENC21_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC21_B_GPIO_Port, ENC21_B_Pin)); 
+			enc_ev.encoder_id = 4;
+			break;
+		}
+		case ENC22_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC22_B_GPIO_Port, ENC22_B_Pin)); 
+			enc_ev.encoder_id = 5;
+			break;
+		}
+		case ENC23_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC23_B_GPIO_Port, ENC23_B_Pin)); 
+			enc_ev.encoder_id = 6;
+			break;
+		}
+		case ENC24_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC24_B_GPIO_Port, ENC24_B_Pin)); 
+			enc_ev.encoder_id = 7;
+			break;
+		}
+		case ENC31_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC31_B_GPIO_Port, ENC31_B_Pin)); 
+			enc_ev.encoder_id = 8;
+			break;
+		}
+		case ENC32_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC32_B_GPIO_Port, ENC32_B_Pin)); 
+			enc_ev.encoder_id = 9;
+			break;
+		}
+		case ENC33_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC33_B_GPIO_Port, ENC33_B_Pin)); 
+			enc_ev.encoder_id = 10;
+			break;
+		}
+		case ENC34_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC34_B_GPIO_Port, ENC34_B_Pin)); 
+			enc_ev.encoder_id = 11;
+			break;
+		}
+		case ENC41_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC41_B_GPIO_Port, ENC41_B_Pin)); 
+			enc_ev.encoder_id = 12;
+			break;
+		}
+		case ENC42_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC42_B_GPIO_Port, ENC42_B_Pin)); 
+			enc_ev.encoder_id = 13;
+			break;
+		}
+		case ENC43_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC43_B_GPIO_Port, ENC43_B_Pin)); 
+			enc_ev.encoder_id = 14;
+			break;
+		}
+		case ENC44_A_Pin: {
+			enc_ev.increase = !(HAL_GPIO_ReadPin(ENC44_B_GPIO_Port, ENC44_B_Pin)); 
+			enc_ev.encoder_id = 15;
+			break;
+		}
+		default:
+			return;
+	}
+	xQueueSendFromISR(task_os->encoder_event_queue, &enc_ev, 0);
+
+	/* NOTE: This function Should not be modified, when the callback is needed,
+			 the HAL_GPIO_EXTI_Callback could be implemented in the user file
+	 */
+}
 
 /* USER CODE END 1 */

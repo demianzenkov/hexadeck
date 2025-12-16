@@ -14,14 +14,6 @@
 
 // #define CONFIG_BUTTONS_CALIBRATION_ENABLED 1
 
-// Serial 002
-// #define CORNER_BUTTONS_ADC_CH0  568
-// #define CORNER_BUTTONS_ADC_CH3  570
-
-// Serial 005
-#define CORNER_BUTTONS_ADC_CH0  600
-#define CORNER_BUTTONS_ADC_CH3  560
-
 #define CENTRAL_BUTTONS_ADC_CH1_CH2  560
 
 typedef struct {
@@ -29,8 +21,7 @@ typedef struct {
 } ButtonAdcMedian;
 
 
-
-// serial 005 has these median values
+// DEBUG Controller(005)
 const ButtonAdcMedian button_adc_medians[16] = {
 	{737}, // 0
 	{778}, // 1
@@ -50,32 +41,27 @@ const ButtonAdcMedian button_adc_medians[16] = {
 	{852}, // 15
 };
 
-// 729,697,694,693 - 
-// 769,733,732,730 - 
-// 828,787,787,786 - 
-// 894,848,848,846 - 
-// serial 002 has these median values
-/*
-const ButtonAdcMedian button_adc_medians[16] = {
-	// i*4+0, i*4+1, i*4+2, i*4+3 for i=0..3
-	{729}, // 0
-	{770}, // 1
-	{828}, // 2
-	{894}, // 3
-	{696}, // 4
-	{733}, // 5
-	{789}, // 6
-	{848}, // 7
-	{694}, // 8
-	{733}, // 9
-	{787}, // 10
-	{847}, // 11
-	{692}, // 12
-	{730}, // 13
-	{786}, // 14
-	{848}, // 15
-};
-*/
+
+// SERIAL 001, 002, 003, 004
+// const ButtonAdcMedian button_adc_medians[16] = {
+// 	{729}, // 0
+// 	{770}, // 1
+// 	{828}, // 2
+// 	{894}, // 3
+// 	{696}, // 4
+// 	{733}, // 5
+// 	{789}, // 6
+// 	{848}, // 7
+// 	{694}, // 8
+// 	{733}, // 9
+// 	{787}, // 10
+// 	{847}, // 11
+// 	{692}, // 12
+// 	{730}, // 13
+// 	{786}, // 14
+// 	{848}, // 15
+// };
+
 
 extern ADC_HandleTypeDef hadc1;
 
@@ -117,7 +103,7 @@ void Buttons::task(void const *arg)
 					if((now - p_this->menu_entry_start) >= 100) {
 						button_event_t button_ev;
 						button_ev.type = BUTTON_EVENT_CENTRAL_QUAD_PRESS;
-						xQueueSend(task_os.button_event_queue, &button_ev, 0);
+						xQueueSend(TaskOS::getInstance()->button_event_queue, &button_ev, 0);
 					}
 				}
 			} else {
@@ -162,7 +148,7 @@ void Buttons::task(void const *arg)
 					button_ev.type = BUTTON_EVENT_SINGLE_PRESS;
 					button_ev.button_id = i;
 					button_ev.state = p_this->button_state[i];
-					xQueueSend(task_os.button_event_queue, &button_ev, 0);
+					xQueueSend(TaskOS::getInstance()->button_event_queue, &button_ev, 0);
 					p_this->prev_button_state[i] = p_this->button_state[i];
 				}
 			}

@@ -44,14 +44,14 @@ typedef enum {
 
 class UI : public TaskPrototype {
 public:
-	UI();
 	static UI * getInstance();
 	void 		createTask() override;
 	void		refreshDisplayState(uint8_t disp, module_state_t * state);
+	void 		refreshDisplayValue(uint8_t disp, uint8_t value);
+	
 	void		lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id);
 	void		lvgl_selectMenu(uint16_t selected_index);
 	void		lvgl_selectPreset(uint8_t bank_index);
-	void		lvgl_selectUiPreset(uint8_t preset_index);
 	void		lvgl_selectMidiUnit(uint8_t unit_index);
 	void		lvgl_loadMidiUnitParameters(void * module_state); // module_state_t
 	void		lvgl_selectMidiParameter(uint8_t parameter_menu_index);
@@ -62,6 +62,7 @@ private:
 	static void taskUI(void const *arg);
 	static void taskLVGL(void const *arg);
 	void 		lvgl_setUiState(module_state_t * state);
+	void 		lvgl_setValue(value_update_t value);
 
 public:
 	lv_display_t * lcd_disp;
@@ -72,6 +73,7 @@ private:
 	SemaphoreHandle_t lvgl_ready_sem;
 	SemaphoreHandle_t ui_busy_mutex;
 	QueueHandle_t ui_update_queue;
+	QueueHandle_t ui_value_queue;
 	module_state_t current_ui_state = {};
 };
 

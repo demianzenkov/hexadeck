@@ -132,7 +132,7 @@ int NVS::saveModulePreset(uint8_t preset_bank, module_state_t *preset)
 }
 
 
-int NVS::loadModulePreset(uint8_t preset_bank, module_state_t *preset)
+int NVS::loadModulePreset(uint8_t preset_bank, module_state_t * preset)
 {
 	if (preset_bank >= MIDI_PRESETS_COUNT) {
 		return -1;

@@ -23,6 +23,11 @@ typedef struct {
 	lv_color_t border_color;
 } module_state_t;
 
+typedef struct {
+	uint8_t id;
+	uint8_t value;
+} value_update_t;
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
