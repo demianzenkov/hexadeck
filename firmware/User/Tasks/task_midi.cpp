@@ -1,5 +1,5 @@
 /*
- * task_midi.c
+ * task_midi.cpp
  *
  */
 

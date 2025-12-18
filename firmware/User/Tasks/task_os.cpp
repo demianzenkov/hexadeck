@@ -12,7 +12,7 @@ TaskOS::TaskOS()
 
 	const module_state_t init_states[16] = {
 		{0,  64,  0, 0,  0, 127, 1, "Bank", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{1,  64,  0, 1,  0, 127, 1, "Wheel", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
+		{1,  4,  0, 1,  0, 10, 3, "Wheel", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
 		{2,  64,  0, 2,  0, 127, 1, "Breath", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
 		{3,  64,  0, 3,  0, 127, 1, "CC-3", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
 		{4,  64,  0, 4,  0, 127, 1, "Foot", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
@@ -84,10 +84,7 @@ void TaskOS::processEncoderEvent(encoder_event_t * encoder_event)
 		}
 		task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->value);
 		module_states[enc_id].value = module_state->value;
-
-		// ui_p->refreshDisplayState(enc_id, module_state);
-		ui_p->refreshDisplayValue(enc_id, module_state->value);
-		// ui_p->setValue(enc_id, module_state->value);
+		ui_p->refreshDisplayValue(enc_id, module_state->value, module_state->max_value);
 	}
 }
 
@@ -177,45 +174,25 @@ void TaskOS::processMenuButton()
 			break;
 		}
 		case SCREEN_ID_CONFIG_MIDI_UNIT: {
-			if(midi_parameter_selection > 1) {
-				ui_p->lvgl_selectMidiParameter(0);
-				midi_parameter_selection = 0;
+			if(midi_config_selection == MENU_CONFIG_RETURN) {
+				ui_p->lvgl_selectMidiParameter(MENU_CONFIG_CHANNEL);
+				midi_config_selection = MENU_CONFIG_CHANNEL;
 				ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI);
 				current_screen = SCREEN_ID_CONFIG_MIDI;
 			}
-			else if (midi_parameter_selection == 0) {
-				if(midi_parameter_channel_selector_active) {
-					midi_parameter_channel_selector_active = false;
-					// TODO: set unit channel state
-					// ui_p->setChannel(midi_unit_selection, module_states[midi_unit_selection].channel);
-					module_states[midi_unit_selection].channel = module_states[midi_unit_selection].channel;
-					ui_p->refreshDisplayState(midi_unit_selection, &module_states[midi_unit_selection]);
-					vTaskDelay(30);
-					ui_p->lvgl_loadScreen(midi_unit_selection, SCREEN_ID_MAIN);
-					vTaskDelay(30);
-					ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI_UNIT);
-					vTaskDelay(30);
-				} else {
-					midi_parameter_channel_selector_active = true;
-				}
-				ui_p->lvgl_activateChannelSelector(midi_parameter_channel_selector_active);
+			else if(midi_parameter_selector_active) {
+				midi_parameter_selector_active = false;
+				ui_p->lvgl_activateMidiParameterSelector(false);
+				ui_p->refreshDisplayState(midi_unit_selection, &module_states[midi_unit_selection]);
+				vTaskDelay(30);
+				ui_p->lvgl_loadScreen(midi_unit_selection, SCREEN_ID_MAIN);
+				vTaskDelay(30);
+				ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI_UNIT);
+				vTaskDelay(30);
 			}
-			else if(midi_parameter_selection == 1) {
-				if(midi_parameter_cc_selector_active) {
-					midi_parameter_cc_selector_active = false;
-					// TODO: set unit CC state
-					// ui_p->setCC(midi_unit_selection, module_states[midi_unit_selection].cc);
-					module_states[midi_unit_selection].cc = module_states[midi_unit_selection].cc;
-					ui_p->refreshDisplayState(midi_unit_selection, &module_states[midi_unit_selection]);
-					vTaskDelay(30);
-					ui_p->lvgl_loadScreen(midi_unit_selection, SCREEN_ID_MAIN);
-					vTaskDelay(30);
-					ui_p->lvgl_loadScreen(0, SCREEN_ID_CONFIG_MIDI_UNIT);
-					vTaskDelay(30);
-				} else {
-					midi_parameter_cc_selector_active = true;
-				}
-				ui_p->lvgl_activateCCSelector(midi_parameter_cc_selector_active);
+			else {
+				midi_parameter_selector_active = true;
+				ui_p->lvgl_activateMidiParameterSelector(true);
 			}
 			break;
 		}
@@ -263,7 +240,6 @@ void TaskOS::processPresetSelector(bool increase)
 }
 
 
-
 void TaskOS::processMidiUnitSelector(bool increase)
 {
 	if(increase) {
@@ -285,61 +261,103 @@ void TaskOS::processMidiUnitSelector(bool increase)
 
 void TaskOS::processMidiParameterSelector(bool increase)
 {
-	if(midi_parameter_channel_selector_active) {
-		// Channel selector active, update channel state & lvgl_loadMidiUnitParameters
-		uint8_t channel = module_states[midi_unit_selection].channel;
-		if(increase) {
-			if(channel < 15) {
-				channel++;
-			} else {
-				channel = 0;
+	if(midi_parameter_selector_active) {
+		switch(midi_config_selection) {
+			case MENU_CONFIG_CHANNEL: {
+				if(increase) {
+					if(module_states[midi_unit_selection].channel < 15) {
+						module_states[midi_unit_selection].channel++;
+					} else {
+						module_states[midi_unit_selection].channel = 0;
+					}
+				} else {
+					if(module_states[midi_unit_selection].channel > 0) {
+						module_states[midi_unit_selection].channel--;
+					} else {
+						module_states[midi_unit_selection].channel = 15;
+					}
+				}
+				break;
 			}
-		} else {
-			if(channel > 0) {
-				channel--;
-			} else {
-				channel = 15;
+			case MENU_CONFIG_CC: {
+				if(increase) {
+					if(module_states[midi_unit_selection].cc < 127) {
+						module_states[midi_unit_selection].cc++;
+					} else {
+						module_states[midi_unit_selection].cc = 0;
+					}
+				} else {
+					if(module_states[midi_unit_selection].cc > 0) {
+						module_states[midi_unit_selection].cc--;
+					} else {
+						module_states[midi_unit_selection].cc = 127;
+					}
+				}
+				break;
 			}
+			case MENU_CONFIG_MIN_RANGE: {
+				if(increase) {
+					if(module_states[midi_unit_selection].min_value < module_states[midi_unit_selection].max_value) {
+						module_states[midi_unit_selection].min_value++;
+					}
+				} else {
+					if(module_states[midi_unit_selection].min_value > 0) {
+						module_states[midi_unit_selection].min_value--;
+					}
+				}
+				if(module_states[midi_unit_selection].value < module_states[midi_unit_selection].min_value) {
+					module_states[midi_unit_selection].value = module_states[midi_unit_selection].min_value;
+				}
+				break;
+			}
+			case MENU_CONFIG_MAX_RANGE: {
+				if(increase) {
+					if(module_states[midi_unit_selection].max_value < 127) {
+						module_states[midi_unit_selection].max_value++;
+					}
+				} else {
+					if(module_states[midi_unit_selection].max_value > module_states[midi_unit_selection].min_value) {
+						module_states[midi_unit_selection].max_value--;
+					}
+				}
+				if(module_states[midi_unit_selection].value > module_states[midi_unit_selection].max_value) {
+					module_states[midi_unit_selection].value = module_states[midi_unit_selection].max_value;
+				}
+				break;
+			}
+			case MENU_CONFIG_STEP: {
+				if(increase) {
+					if(module_states[midi_unit_selection].step < 127) {
+						module_states[midi_unit_selection].step++;
+					}
+				} else {
+					if(module_states[midi_unit_selection].step > 1) {
+						module_states[midi_unit_selection].step--;
+					}
+				}
+				break;
+			}
+			default:
+				break;
 		}
-		module_states[midi_unit_selection].channel = channel;
 		ui_p->lvgl_loadMidiUnitParameters(&module_states[midi_unit_selection]);
-		ui_p->lvgl_selectMidiParameter(midi_parameter_selection);	// to keep roller not updated
-	} else if (midi_parameter_cc_selector_active) {
-		// CC selector active, update CC state & lvgl_loadMidiUnitParameters
-		uint8_t cc = module_states[midi_unit_selection].cc;
-		if(increase) {
-			if(cc < 127) {
-				cc++;
-			} else {
-				cc = 0;
-			}
-		} else {
-			if(cc > 0) {
-				cc--;
-			} else {
-				cc = 127;
-			}
-		}
-		// setStateCC(midi_unit_selection, cc);
-		module_states[midi_unit_selection].cc = cc;
-		ui_p->lvgl_loadMidiUnitParameters(&module_states[midi_unit_selection]);
-		ui_p->lvgl_selectMidiParameter(midi_parameter_selection);	// to keep roller not updated
+		ui_p->lvgl_selectMidiParameter(midi_config_selection);	// to keep roller not updated
 	}
 	else {
 		if(increase) {
-			if(midi_parameter_selection < 2) {
-				midi_parameter_selection++;
+			if(midi_config_selection < MENU_CONFIG_COUNT - 1) {
+				midi_config_selection = (menu_config_select_e)((int)midi_config_selection + 1);
 			} else {
-				midi_parameter_selection = 0;
+				midi_config_selection = (menu_config_select_e)0;
 			}
 		} else {
-			if(midi_parameter_selection > 0) {
-				midi_parameter_selection--;
+			if(midi_config_selection > 0) {
+				midi_config_selection = (menu_config_select_e)((int)midi_config_selection - 1);
 			} else {
-				midi_parameter_selection = 2;
+				midi_config_selection = (menu_config_select_e)((int)MENU_CONFIG_COUNT - 1);
 			}
 		}
-		ui_p->lvgl_selectMidiParameter(midi_parameter_selection); // to keep roller not updated
+		ui_p->lvgl_selectMidiParameter(midi_config_selection); // to keep roller not updated
 	}
 }
 
@@ -424,15 +442,14 @@ void TaskOS::task(void const *arg)
 	button_event_t button_ev;
 
 	/* Load UI states from flash memory */
-	if(p_this->nvs.loadModulePreset(0, p_this->module_states) != 0) {
-		// Failed to load, use default states
-		p_this->nvs.saveModulePreset(0, p_this->module_states);
-		if(p_this->nvs.loadModulePreset(0, p_this->module_states) != 0) {
-			while(1) {
-				vTaskDelay(50);
-			}
-		}
-	}
+	// if(p_this->nvs.loadModulePreset(0, p_this->module_states) != 0) {
+	// 	p_this->nvs.saveModulePreset(0, p_this->module_states);
+	// 	if(p_this->nvs.loadModulePreset(0, p_this->module_states) != 0) {
+	// 		while(1) {
+	// 			vTaskDelay(50);
+	// 		}
+	// 	}
+	// }
 
 	/* Set UI for modules states */
 	for(int i = 0; i < 16; i++) {
@@ -520,7 +537,8 @@ void TaskOS::task(void const *arg)
 						(acm_event.data[0] <= module_state->max_value)) {
 							// TODO: check if value correlates with step
 							p_this->setStateValue(acm_event.id, acm_event.data[0]);
-							p_this->ui_p->refreshDisplayState(acm_event.id, module_state);
+							p_this->ui_p->refreshDisplayValue(acm_event.id, module_state->value, module_state->max_value);
+							// p_this->ui_p->refreshDisplayState(acm_event.id, module_state);
 							p_this->task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->value);
 						}
 					}

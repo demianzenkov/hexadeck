@@ -26,6 +26,7 @@ typedef struct {
 typedef struct {
 	uint8_t id;
 	uint8_t value;
+	uint8_t range_max;
 } value_update_t;
 
 #ifdef __cplusplus

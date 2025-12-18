@@ -41,6 +41,16 @@ typedef enum {
 	MENU_SELECT_COUNT,
 } menu_select_e;
 
+typedef enum {
+	MENU_CONFIG_CHANNEL = 0,
+	MENU_CONFIG_CC,
+	MENU_CONFIG_MIN_RANGE,
+	MENU_CONFIG_MAX_RANGE,
+	MENU_CONFIG_STEP,
+	MENU_CONFIG_RETURN,
+	MENU_CONFIG_COUNT,
+} menu_config_select_e;
+
 
 typedef struct {
 	bool increase;		// true - increase, false - decrease
@@ -97,7 +107,8 @@ private:
 	action_load_save_e selected_action;
 	uint8_t preset_selection;	// 4 banks
 	uint8_t midi_unit_selection;	// 16 units
-	uint8_t midi_parameter_selection; // 2 parameters
+	menu_config_select_e midi_config_selection; // 2 parameters
+	bool midi_parameter_selector_active;
 	bool midi_parameter_channel_selector_active;
 	bool midi_parameter_cc_selector_active;
 	uint32_t last_encoder_event_time[16] = {0};

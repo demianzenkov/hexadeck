@@ -1,8 +1,6 @@
 /*
  * task_lvgl.h
  *
- *  Created on: Apr 13, 2024
- *  Author: demian
  */
 
 #ifndef TASK_LVGL_H_
@@ -47,7 +45,7 @@ public:
 	static UI * getInstance();
 	void 		createTask() override;
 	void		refreshDisplayState(uint8_t disp, module_state_t * state);
-	void 		refreshDisplayValue(uint8_t disp, uint8_t value);
+	void 		refreshDisplayValue(uint8_t disp, uint8_t value, uint8_t range_max);
 	
 	void		lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id);
 	void		lvgl_selectMenu(uint16_t selected_index);
@@ -55,8 +53,7 @@ public:
 	void		lvgl_selectMidiUnit(uint8_t unit_index);
 	void		lvgl_loadMidiUnitParameters(void * module_state); // module_state_t
 	void		lvgl_selectMidiParameter(uint8_t parameter_menu_index);
-	void		lvgl_activateChannelSelector(bool active);
-	void		lvgl_activateCCSelector(bool active);
+	void		lvgl_activateMidiParameterSelector(bool active);
 	
 private:
 	static void taskUI(void const *arg);
@@ -68,6 +65,7 @@ public:
 	lv_display_t * lcd_disp;
 	
 private:
+	Display display;
 	osThreadId lvglTaskHandle;
 	osThreadId uiTaskHandle;
 	SemaphoreHandle_t lvgl_ready_sem;

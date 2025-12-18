@@ -1,13 +1,12 @@
 /*
- * display.c
+ * display.cpp
  *
- *  Created on: Apr 13, 2024
- *      Author: demian
  */
 
 #include "display.h"
-#include "lvgl/src/drivers/display/st7735/lv_st7735.h"
 #include "task_lvgl.h"
+#include "lvgl/src/drivers/display/st7735/lv_st7735.h"
+#include "lv_lcd_custom_mipi.h"
 
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
@@ -15,11 +14,11 @@ extern SPI_HandleTypeDef hspi3;
 extern SPI_HandleTypeDef hspi4;
 
 
-//extern lv_display_t *lcd_disp;
-volatile int lcd_bus_busy = 0;
-volatile display_state_t * ds_active;
+volatile display_state_t * Display::ds_active;
+volatile int Display::lcd_bus_busy = 0;
 
-const display_state_t ds[16] = {
+
+const display_state_t Display::ds[] = {
         {0, &hspi1, D11_CS_GPIO_Port, D11_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
 		{1, &hspi1, D12_CS_GPIO_Port, D12_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
 		{2, &hspi1, D13_CS_GPIO_Port, D13_CS_Pin, D1_RESET_GPIO_Port, D1_RESET_Pin, D1_RS_GPIO_Port, D1_RS_Pin},
@@ -38,19 +37,21 @@ const display_state_t ds[16] = {
 		{15,&hspi4, D44_CS_GPIO_Port, D44_CS_Pin, D4_RESET_GPIO_Port, D4_RESET_Pin, D4_RS_GPIO_Port, D4_RS_Pin}
 };
 
-void set_active_display(uint8_t id) {
-    ds_active = (display_state_t *)&ds[id];
+
+lv_display_t * Display::createDisplay() {
+	return lv_lcd_custom_mipi_create(LCD_H_RES, LCD_V_RES, LV_LCD_FLAG_BGR, lcd_send_cmd, lcd_send_color);
 }
 
-static void lcd_color_transfer_ready_cb(SPI_HandleTypeDef *hspi) {
-	/* CS high */
-	HAL_GPIO_WritePin(ds_active->cs_port, ds_active->cs_pin, GPIO_PIN_SET);
-	lcd_bus_busy = 0;
-	lv_display_flush_ready(UI::getInstance()->lcd_disp);
+
+void Display::set_active_display(uint8_t id) {
+	while (Display::lcd_bus_busy)
+		; /* wait until previous transfer is finished */
+    ds_active = (display_state_t *)&Display::ds[id];
 }
+
 
 /* Initialize LCD I/O bus, reset LCD */
-int32_t lcd_io_init(void) {
+int32_t Display::lcd_io_init(void) {
 	/* Register SPI Tx Complete Callback */
 	HAL_SPI_RegisterCallback(ds_active->hspi, HAL_SPI_TX_COMPLETE_CB_ID,
 			lcd_color_transfer_ready_cb);
@@ -67,8 +68,17 @@ int32_t lcd_io_init(void) {
 	return HAL_OK;
 }
 
+
+void Display::lcd_color_transfer_ready_cb(SPI_HandleTypeDef *hspi) {
+	/* CS high */
+	HAL_GPIO_WritePin(ds_active->cs_port, ds_active->cs_pin, GPIO_PIN_SET);
+	lcd_bus_busy = 0;
+	lv_display_flush_ready(UI::getInstance()->lcd_disp);
+}
+
+
 /* Platform-specific implementation of the LCD send command function. In general this should use polling transfer. */
-void lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd,
+void Display::lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd,
 		size_t cmd_size, const uint8_t *param, size_t param_size) {
 	LV_UNUSED(disp);
 	while (lcd_bus_busy)
@@ -95,7 +105,7 @@ void lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd,
 /* Platform-specific implementation of the LCD send color function. For better performance this should use DMA transfer.
  * In case of a DMA transfer a callback must be installed to notify LVGL about the end of the transfer.
  */
-void lcd_send_color(lv_display_t *disp, const uint8_t *cmd,
+void Display::lcd_send_color(lv_display_t *disp, const uint8_t *cmd,
 		size_t cmd_size, uint8_t *param, size_t param_size) {
 	LV_UNUSED(disp);
 	while (lcd_bus_busy)

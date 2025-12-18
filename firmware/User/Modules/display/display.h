@@ -26,11 +26,23 @@ typedef struct {
 	uint16_t rs_pin;
 } display_state_t;
 
-int32_t lcd_io_init(void);
-void lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd, size_t cmd_size, const uint8_t *param, size_t param_size);
-void lcd_send_color(lv_display_t *disp, const uint8_t *cmd, size_t cmd_size, uint8_t *param, size_t param_size);
 
-void set_active_display(uint8_t id);
+class Display {
+public:
+	lv_display_t *	createDisplay();
+	int32_t 		lcd_io_init(void);
+	void 			set_active_display(uint8_t id);
+private:
+	static void lcd_color_transfer_ready_cb(SPI_HandleTypeDef *hspi);
+	static void lcd_send_cmd(lv_display_t *disp, const uint8_t *cmd, size_t cmd_size, const uint8_t *param, size_t param_size);
+	static void lcd_send_color(lv_display_t *disp, const uint8_t *cmd, size_t cmd_size, uint8_t *param, size_t param_size);
+
+public:
+	static const display_state_t ds[];
+private:
+	static volatile int lcd_bus_busy;
+	static volatile display_state_t * ds_active;
+};
 
 #ifdef __cplusplus
 } /*extern "C"*/

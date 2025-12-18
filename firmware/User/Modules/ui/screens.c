@@ -271,7 +271,7 @@ void create_screen_config_midi_unit() {
             objects.config_midi_unit_roller = obj;
             lv_obj_set_pos(obj, 0, 0);
             lv_obj_set_size(obj, 160, 80);
-            lv_roller_set_options(obj, "Channel: 1\nCC: 2\nReturn", LV_ROLLER_MODE_INFINITE);
+            lv_roller_set_options(obj, "Channel: 1\nCC: 2\nMin. range: 0\nMax. range: 127\nStep: 1\nReturn", LV_ROLLER_MODE_INFINITE);
             lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
             lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);

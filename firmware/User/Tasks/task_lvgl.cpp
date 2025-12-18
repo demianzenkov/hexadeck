@@ -1,8 +1,6 @@
 /*
- * task_lvgl.c
+ * task_lvgl.cpp
  *
- *  Created on: Apr 13, 2024
- *      Author: demian
  */
 
 #include "task_lvgl.h"
@@ -59,6 +57,7 @@ UI * UI::getInstance()
 	return &instance;
 }
 
+
 void UI::createTask()
 {
 	lvgl_ready_sem = xSemaphoreCreateBinary();
@@ -98,8 +97,6 @@ void UI::taskUI(void const *arg)
 	for (;;)
 	{
 		if(xQueueReceive(p_this->ui_update_queue, &ui_state, 0) == pdTRUE) {
-			while((p_this->lcd_disp->flushing) || (p_this->lcd_disp->rendering_in_progress)) {
-			}
 			p_this->lvgl_setUiState(ui_state);
 			vTaskDelay(30);
 		}
@@ -121,19 +118,18 @@ void UI::taskLVGL(void const *arg)
 
 	for (int i = 0; i < 16; i++)
 	{
-		set_active_display(i);
-		lcd_io_init();
+		p_this->display.set_active_display(i);
+		p_this->display.lcd_io_init();
 	}
 
-	p_this->lcd_disp = lv_lcd_custom_mipi_create(LCD_H_RES, LCD_V_RES, LV_LCD_FLAG_BGR,
-												 lcd_send_cmd, lcd_send_color);
+	p_this->lcd_disp = p_this->display.createDisplay();
 
 	/* Don't explicitly set color format, let LVGL use its default */
 	/* lv_display_set_color_format(lcd_disp, LV_COLOR_FORMAT_RGB565); */
 
 	for (int i = 0; i < 16; i++)
 	{
-		set_active_display(i);
+		p_this->display.set_active_display(i);
 		lv_lcd_custom_init_controller(p_this->lcd_disp, LV_LCD_FLAG_BGR);
 	}
 
@@ -141,7 +137,7 @@ void UI::taskLVGL(void const *arg)
 
 	for (int i = 0; i < 16; i++)
 	{
-		set_active_display(i);
+		p_this->display.set_active_display(i);
 		lv_lcd_generic_mipi_send_cmd_list(p_this->lcd_disp, init_cmd_list);
 		lv_display_set_rotation(p_this->lcd_disp, LV_DISPLAY_ROTATION_90);
 		lv_display_set_resolution(p_this->lcd_disp, LCD_H_PHYSICAL_RES, LCD_V_PHYSICAL_RES);
@@ -177,11 +173,12 @@ void UI::refreshDisplayState(uint8_t disp, module_state_t * state)
 }
 
 
-void UI::refreshDisplayValue(uint8_t disp, uint8_t value)
+void UI::refreshDisplayValue(uint8_t disp, uint8_t value, uint8_t range_max)
 {
 	value_update_t state = {
 		.id = disp,
-		.value = value
+		.value = value,
+		.range_max = range_max
 	};
 	xQueueSend(ui_value_queue, &state, portMAX_DELAY);
 }
@@ -197,8 +194,7 @@ void UI::lvgl_setUiState(module_state_t * state)
 	
 	bool force_update = (current_ui_state.display_id != state->display_id);
 	current_ui_state.display_id = state->display_id;
-
-	set_active_display(state->display_id);
+	display.set_active_display(state->display_id);
 
 	// Always update if display_id changed, otherwise only if value changed
 	// if(force_update || memcmp(&current_ui_state, state, sizeof(module_state_t)) != 0) {
@@ -255,9 +251,15 @@ void UI::lvgl_setUiState(module_state_t * state)
 		snprintf(value_str, sizeof(value_str), "%d", state->value);
 		lv_label_set_text(objects.level_label, value_str);
 	}
-	if(force_update || (current_ui_state.max_value != state->max_value)) {
+	if(force_update || (current_ui_state.max_value != state->max_value) || (current_ui_state.min_value != state->min_value) || (current_ui_state.step != state->step)) {
 		current_ui_state.max_value = state->max_value;
+		current_ui_state.min_value = state->min_value;
+		current_ui_state.step = state->step;
 		lv_bar_set_range(objects.level_bar, 0, current_ui_state.max_value);
+		lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
+		char range_str[16] = {};
+		snprintf(range_str, sizeof(range_str), "[%d, %d] : %d", state->min_value, state->max_value, state->step);
+		lv_label_set_text(objects.range_label, range_str);
 	}
 	if(force_update || (current_ui_state.channel != state->channel) || (state->channel == 0)) {
 		current_ui_state.channel = state->channel;
@@ -317,8 +319,9 @@ void UI::lvgl_setValue(value_update_t value)
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	
-	set_active_display(value.id);
+	display.set_active_display(value.id);
 
+	lv_bar_set_range(objects.level_bar, 0, value.range_max);
 	lv_bar_set_value(objects.level_bar, value.value, LV_ANIM_OFF);
 	char value_str[6] = {};
 	snprintf(value_str, sizeof(value_str), "%d", value.value);
@@ -335,7 +338,7 @@ void UI::lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id)
 		return;
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(display_id);
+	display.set_active_display(display_id);
 	loadScreen(screen_id);
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -353,7 +356,7 @@ void UI::lvgl_selectMenu(uint16_t selected_index)
 void UI::lvgl_selectPreset(uint8_t bank_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(0);
+	display.set_active_display(0);
 	lv_obj_t * roller = objects.midi_banks_roller;
 	lv_roller_set_selected(roller, bank_index, LV_ANIM_OFF);
 	xSemaphoreGive(ui_busy_mutex);
@@ -363,7 +366,7 @@ void UI::lvgl_selectPreset(uint8_t bank_index)
 void UI::lvgl_selectMidiUnit(uint8_t unit_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(0);
+	display.set_active_display(0);
 	lv_obj_t * roller = objects.config_midi_roller;
 	lv_roller_set_selected(roller, unit_index, LV_ANIM_OFF);
 	xSemaphoreGive(ui_busy_mutex);
@@ -373,10 +376,17 @@ void UI::lvgl_loadMidiUnitParameters(void * module_state)
 {
 	module_state_t * state = (module_state_t *)module_state;
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(0);
+	display.set_active_display(0);
 	lv_obj_t * roller = objects.config_midi_unit_roller;
-	uint8_t options_buffer[64] = {};
-	snprintf((char *)options_buffer, sizeof(options_buffer), "Channel: %d\nCC: %d\nReturn", state->channel + 1, state->cc);
+	uint8_t options_buffer[128] = {};
+	snprintf((char *)options_buffer, sizeof(options_buffer), 
+		"Channel: %d\nCC: %d\nMin. range: %d\nMax. range: %d\nStep: %d\nReturn",
+		state->channel + 1,
+		state->cc,
+		state->min_value,
+		state->max_value,
+		state->step
+	);
 	lv_roller_set_options(roller, (char *)options_buffer, LV_ROLLER_MODE_INFINITE);
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -385,30 +395,22 @@ void UI::lvgl_loadMidiUnitParameters(void * module_state)
 void UI::lvgl_selectMidiParameter(uint8_t parameter_menu_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(0);
+	display.set_active_display(0);
 	lv_obj_t * roller = objects.config_midi_unit_roller;
 	lv_roller_set_selected(roller, parameter_menu_index, LV_ANIM_OFF);
 	xSemaphoreGive(ui_busy_mutex);
 }
 
-void UI::lvgl_activateChannelSelector(bool active)
+void UI::lvgl_activateMidiParameterSelector(bool active)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(0);
+	display.set_active_display(0);
 	// if active - set roller to checked state
 	lv_obj_t * roller = objects.config_midi_unit_roller;
 	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
 	xSemaphoreGive(ui_busy_mutex);
 }
 
-void UI::lvgl_activateCCSelector(bool active)
-{
-	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	set_active_display(0);
-	lv_obj_t * roller = objects.config_midi_unit_roller;
-	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
-	xSemaphoreGive(ui_busy_mutex);
-}
 
 #if TEST_UI
 void TaskLVGL_test_ui_task(void const *arg)
