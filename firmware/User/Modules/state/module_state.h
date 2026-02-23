@@ -16,12 +16,30 @@ typedef struct {
 	uint8_t min_value;
 	uint8_t max_value;
 	uint8_t step;
+	uint8_t simple_screen_enabled;
+	uint8_t button_midi_enabled;
+	uint8_t button_onclick_mode;
+	uint8_t button_onclick_step;
+	uint8_t button_midi_channel;
+	uint8_t button_cc;
+	uint8_t button_default_value;
+	uint8_t button_pressed_value;
 	char name[16 + 1];
 	lv_color_t background_color;
 	lv_color_t bar_color;
 	lv_color_t text_color;
 	lv_color_t border_color;
 } module_state_t;
+
+typedef enum {
+	BUTTON_MIDI_ENABLED = 0,
+	BUTTON_MIDI_DISABLED,
+} button_midi_state_e;
+
+typedef enum {
+	BUTTON_ONCLICK_STEP = 0,
+	BUTTON_ONCLICK_DISABLED,
+} button_onclick_mode_e;
 
 typedef struct {
 	uint8_t id;

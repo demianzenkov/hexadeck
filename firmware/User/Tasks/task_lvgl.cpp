@@ -90,7 +90,7 @@ void UI::taskUI(void const *arg)
 	
 	xSemaphoreTake(p_this->ui_busy_mutex, portMAX_DELAY);
 	ui_init();
-	loadScreen(SCREEN_ID_MAIN);
+	loadScreen(p_this->isSimpleMode(0) ? SCREEN_ID_MAIN_SIMPLE : SCREEN_ID_MAIN);
 	xSemaphoreGive(p_this->ui_busy_mutex);
 
 	
@@ -192,7 +192,13 @@ void UI::lvgl_setUiState(module_state_t * state)
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	
+	bool use_simple = isSimpleMode(state->display_id);
 	bool force_update = (current_ui_state.display_id != state->display_id);
+	bool mode_changed = (last_simple_mode[state->display_id] != use_simple);
+	if(mode_changed) {
+		last_simple_mode[state->display_id] = use_simple;
+		force_update = true;
+	}
 	current_ui_state.display_id = state->display_id;
 	display.set_active_display(state->display_id);
 
@@ -246,65 +252,99 @@ void UI::lvgl_setUiState(module_state_t * state)
 	// }
 	if(force_update || (current_ui_state.value != state->value)) {
 		current_ui_state.value = state->value;
-		lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
 		char value_str[6] = {};
 		snprintf(value_str, sizeof(value_str), "%d", state->value);
-		lv_label_set_text(objects.level_label, value_str);
+		if(use_simple) {
+			lv_bar_set_value(objects.level_bar_simple, state->value, LV_ANIM_OFF);
+			lv_label_set_text(objects.level_label_simple, value_str);
+		} else {
+			lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
+			lv_label_set_text(objects.level_label, value_str);
+		}
 	}
 	if(force_update || (current_ui_state.max_value != state->max_value) || (current_ui_state.min_value != state->min_value) || (current_ui_state.step != state->step)) {
 		current_ui_state.max_value = state->max_value;
 		current_ui_state.min_value = state->min_value;
 		current_ui_state.step = state->step;
-		lv_bar_set_range(objects.level_bar, 0, current_ui_state.max_value);
-		lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
-		char range_str[16] = {};
-		snprintf(range_str, sizeof(range_str), "[%d, %d] : %d", state->min_value, state->max_value, state->step);
-		lv_label_set_text(objects.range_label, range_str);
+		if(use_simple) {
+			lv_bar_set_range(objects.level_bar_simple, 0, current_ui_state.max_value);
+			lv_bar_set_value(objects.level_bar_simple, state->value, LV_ANIM_OFF);
+		} else {
+			lv_bar_set_range(objects.level_bar, 0, current_ui_state.max_value);
+			lv_bar_set_value(objects.level_bar, state->value, LV_ANIM_OFF);
+			char step_str[8] = {};
+			snprintf(step_str, sizeof(step_str), "S: %d", state->step);
+			lv_label_set_text(objects.range_step_label, step_str);
+			char min_str[6] = {};
+			snprintf(min_str, sizeof(min_str), "%d", state->min_value);
+			lv_label_set_text(objects.range_min_label, min_str);
+			char max_str[6] = {};
+			snprintf(max_str, sizeof(max_str), "%d", state->max_value);
+			lv_label_set_text(objects.range_max_label, max_str);
+		}
 	}
 	if(force_update || (current_ui_state.channel != state->channel) || (state->channel == 0)) {
-		current_ui_state.channel = state->channel;
-		char channel_str[MAX_CH_LABEL_LENGTH] = {};
-		snprintf(channel_str, sizeof(channel_str), "CH-%d", state->channel+1);
-		lv_label_set_text(objects.channel_label, channel_str);
+		if(!use_simple) {
+			current_ui_state.channel = state->channel;
+			char channel_str[MAX_CH_LABEL_LENGTH] = {};
+			snprintf(channel_str, sizeof(channel_str), "CH-%d", state->channel+1);
+			lv_label_set_text(objects.channel_label, channel_str);
+		}
 	}
 	if(force_update || (current_ui_state.cc != state->cc) || (state->cc == 0)) {
-		current_ui_state.cc = state->cc;
-		char cc_str[MAX_CC_LABEL_LENGTH] = {};
-		snprintf(cc_str, sizeof(cc_str), "CC-%d", state->cc);
-		lv_label_set_text(objects.cc_label, cc_str);
+		if(!use_simple) {
+			current_ui_state.cc = state->cc;
+			char cc_str[MAX_CC_LABEL_LENGTH] = {};
+			snprintf(cc_str, sizeof(cc_str), "CC-%d", state->cc);
+			lv_label_set_text(objects.cc_label, cc_str);
+		}
 	}
 	if(force_update || (strcmp(current_ui_state.name, state->name) != 0)) {
 		strncpy(current_ui_state.name, state->name, sizeof(current_ui_state.name));
-		lv_label_set_text(objects.name_label, state->name);
+		if(use_simple) {
+			lv_label_set_text(objects.name_label_simple, state->name);
+		} else {
+			lv_label_set_text(objects.name_label, state->name);
+		}
 	}
 	if(force_update || (lv_color_eq(current_ui_state.bar_color, state->bar_color) == false)) {
 		current_ui_state.bar_color = state->bar_color;
-		lv_obj_set_style_bg_color(objects.level_bar, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_opa(objects.level_bar, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+		if(use_simple) {
+			lv_obj_set_style_bg_color(objects.level_bar_simple, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+			lv_obj_set_style_bg_opa(objects.level_bar_simple, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+		} else {
+			lv_obj_set_style_bg_color(objects.level_bar, state->bar_color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+			lv_obj_set_style_bg_opa(objects.level_bar, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+		}
 	}
 	if(force_update || (lv_color_eq(current_ui_state.border_color, state->border_color) == false)) {
 		current_ui_state.border_color = state->border_color;
-		lv_obj_set_style_border_color(objects.general_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.channel_pannel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.name_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.cc_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_border_color(objects.range_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		if(!use_simple) {
+			lv_obj_set_style_border_color(objects.general_panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		}
 	}
 	if(force_update || (lv_color_eq(current_ui_state.text_color, state->text_color) == false)) {
 		current_ui_state.text_color = state->text_color;
-		lv_obj_set_style_text_color(objects.name_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.channel_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.level_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.cc_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_text_color(objects.range_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		if(use_simple) {
+			lv_obj_set_style_text_color(objects.name_label_simple, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.level_label_simple, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		} else {
+			lv_obj_set_style_text_color(objects.name_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.channel_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.level_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.cc_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.range_step_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.range_min_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_text_color(objects.range_max_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		}
 	}
 	if(force_update || (lv_color_eq(current_ui_state.background_color, state->background_color) == false)) {
 		current_ui_state.background_color = state->background_color;
-		lv_obj_set_style_bg_color(objects.general_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.channel_pannel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.name_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.cc_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		lv_obj_set_style_bg_color(objects.range_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		if(use_simple) {
+			lv_obj_set_style_bg_color(objects.general_panel_simple, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		} else {
+			lv_obj_set_style_bg_color(objects.general_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		}
 	}
 
 	xSemaphoreGive(ui_busy_mutex);
@@ -320,12 +360,19 @@ void UI::lvgl_setValue(value_update_t value)
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	
 	display.set_active_display(value.id);
+	bool use_simple = isSimpleMode(value.id);
 
-	lv_bar_set_range(objects.level_bar, 0, value.range_max);
-	lv_bar_set_value(objects.level_bar, value.value, LV_ANIM_OFF);
 	char value_str[6] = {};
 	snprintf(value_str, sizeof(value_str), "%d", value.value);
-	lv_label_set_text(objects.level_label, value_str);
+	if(use_simple) {
+		lv_bar_set_range(objects.level_bar_simple, 0, value.range_max);
+		lv_bar_set_value(objects.level_bar_simple, value.value, LV_ANIM_OFF);
+		lv_label_set_text(objects.level_label_simple, value_str);
+	} else {
+		lv_bar_set_range(objects.level_bar, 0, value.range_max);
+		lv_bar_set_value(objects.level_bar, value.value, LV_ANIM_OFF);
+		lv_label_set_text(objects.level_label, value_str);
+	}
 
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -353,62 +400,173 @@ void UI::lvgl_selectMenu(uint16_t selected_index)
 }
 
 
-void UI::lvgl_selectPreset(uint8_t bank_index)
+void UI::lvgl_selectPreset(uint8_t menu_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.midi_banks_roller;
-	lv_roller_set_selected(roller, bank_index, LV_ANIM_OFF);
+	lv_obj_t * roller = objects.presets_roller;
+	lv_roller_set_selected(roller, menu_index, LV_ANIM_OFF);
 	xSemaphoreGive(ui_busy_mutex);
 }
 
-
-void UI::lvgl_selectMidiUnit(uint8_t unit_index)
+void UI::lvgl_loadPresetOptions(uint8_t preset_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.config_midi_roller;
-	lv_roller_set_selected(roller, unit_index, LV_ANIM_OFF);
+	lv_obj_t * roller = objects.presets_roller;
+	char options_buffer[64] = {};
+	snprintf(options_buffer, sizeof(options_buffer), "Preset: %d\nLoad\nSave\nReturn", preset_index + 1);
+	lv_roller_set_options(roller, options_buffer, LV_ROLLER_MODE_INFINITE);
 	xSemaphoreGive(ui_busy_mutex);
 }
 
-void UI::lvgl_loadMidiUnitParameters(void * module_state)
+void UI::lvgl_activatePresetSelector(bool active)
 {
-	module_state_t * state = (module_state_t *)module_state;
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.config_midi_unit_roller;
-	uint8_t options_buffer[128] = {};
-	snprintf((char *)options_buffer, sizeof(options_buffer), 
-		"Channel: %d\nCC: %d\nMin. range: %d\nMax. range: %d\nStep: %d\nReturn",
+	lv_obj_t * roller = objects.presets_roller;
+	lv_obj_set_style_text_color(roller, lv_color_hex(0xff000000), LV_PART_SELECTED | LV_STATE_CHECKED);
+	lv_obj_set_style_border_width(roller, 2, LV_PART_SELECTED | LV_STATE_CHECKED);
+	lv_obj_set_style_bg_color(roller, lv_color_hex(0xffdedede), LV_PART_SELECTED | LV_STATE_CHECKED);
+	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_selectKnobSetup(uint8_t selected_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.knob_setup_roller;
+	lv_roller_set_selected(roller, selected_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_loadKnobSetupParameters(uint8_t knob_index, const module_state_t *state)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.knob_setup_roller;
+	char options_buffer[160] = {};
+	snprintf(options_buffer, sizeof(options_buffer),
+		"Selected Knob: %d\nChannel: %d\nCC: %d\nMin. range: %d\nMax. range: %d\nStep: %d\nReturn",
+		knob_index + 1,
 		state->channel + 1,
 		state->cc,
 		state->min_value,
 		state->max_value,
 		state->step
 	);
-	lv_roller_set_options(roller, (char *)options_buffer, LV_ROLLER_MODE_INFINITE);
+	lv_roller_set_options(roller, options_buffer, LV_ROLLER_MODE_INFINITE);
 	xSemaphoreGive(ui_busy_mutex);
 }
 
-
-void UI::lvgl_selectMidiParameter(uint8_t parameter_menu_index)
+void UI::lvgl_activateKnobSetupSelector(bool active)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.config_midi_unit_roller;
-	lv_roller_set_selected(roller, parameter_menu_index, LV_ANIM_OFF);
-	xSemaphoreGive(ui_busy_mutex);
-}
-
-void UI::lvgl_activateMidiParameterSelector(bool active)
-{
-	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	display.set_active_display(0);
-	// if active - set roller to checked state
-	lv_obj_t * roller = objects.config_midi_unit_roller;
+	lv_obj_t * roller = objects.knob_setup_roller;
 	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
 	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_selectButtonSetup(uint8_t selected_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.button_setup_roller;
+	lv_roller_set_selected(roller, selected_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_loadButtonSetupParameters(uint8_t button_index, const module_state_t *state)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.button_setup_roller;
+	const char *midi_str = (state->button_midi_enabled == BUTTON_MIDI_ENABLED) ? "enabled" : "disabled";
+	const char *onclick_str = (state->button_onclick_mode == BUTTON_ONCLICK_STEP) ? "step" : "disabled";
+	char options_buffer[200] = {};
+	snprintf(options_buffer, sizeof(options_buffer),
+		"Selected Button: %d\nMIDI: %s\nChannel: %d\nCC: %d\nDefault value: %d\nPressed value: %d\nOnclick: %s\nOnclick step: %d\nReturn",
+		button_index + 1,
+		midi_str,
+		state->button_midi_channel + 1,
+		state->button_cc,
+		state->button_default_value,
+		state->button_pressed_value,
+		onclick_str,
+		state->button_onclick_step
+	);
+	lv_roller_set_options(roller, options_buffer, LV_ROLLER_MODE_INFINITE);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_activateButtonSetupSelector(bool active)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.button_setup_roller;
+	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_selectSettings(uint8_t selected_index)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.screen_setup_roller;
+	lv_roller_set_selected(roller, selected_index, LV_ANIM_OFF);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_loadSettingsOptions(uint8_t screen_index, bool simple_screen_enabled)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.screen_setup_roller;
+	char screen_str[8] = {};
+	if(screen_index == 0xFF) {
+		strncpy(screen_str, "all", sizeof(screen_str));
+	} else {
+		snprintf(screen_str, sizeof(screen_str), "%u", (unsigned)(screen_index + 1));
+	}
+	const char *simple_str = simple_screen_enabled ? "On" : "Off";
+	char options_buffer[64] = {};
+	snprintf(options_buffer, sizeof(options_buffer),
+		"Screen: %s\nSimple screen: %s\nReturn",
+		screen_str,
+		simple_str
+	);
+	lv_roller_set_options(roller, options_buffer, LV_ROLLER_MODE_INFINITE);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::lvgl_activateSettingsSelector(bool active)
+{
+	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	display.set_active_display(0);
+	lv_obj_t * roller = objects.screen_setup_roller;
+	lv_obj_set_style_text_color(roller, lv_color_hex(0xff000000), LV_PART_SELECTED | LV_STATE_CHECKED);
+	lv_obj_set_style_border_width(roller, 2, LV_PART_SELECTED | LV_STATE_CHECKED);
+	lv_obj_set_style_bg_color(roller, lv_color_hex(0xffdedede), LV_PART_SELECTED | LV_STATE_CHECKED);
+	lv_obj_set_state(roller, LV_STATE_CHECKED, active);
+	xSemaphoreGive(ui_busy_mutex);
+}
+
+void UI::setSimpleMode(uint8_t display_id, bool enabled)
+{
+	if(display_id > 15) {
+		return;
+	}
+	simple_mode[display_id] = enabled;
+}
+
+bool UI::isSimpleMode(uint8_t display_id) const
+{
+	if(display_id > 15) {
+		return false;
+	}
+	return simple_mode[display_id];
 }
 
 

@@ -32,9 +32,10 @@ extern "C" {
 
 
 typedef enum {
-	MENU_SELECT_LOAD_PRESET = 0,
-	MENU_SELECT_SAVE_PRESET,
-	MENU_SELECT_CONFIG_MIDI,
+	MENU_SELECT_PRESETS = 0,
+	MENU_SELECT_KNOB_SETUP,
+	MENU_SELECT_BUTTON_SETUP,
+	MENU_SELECT_SCREEN_SETUP,
 	MENU_SELECT_AUTOMAPPING,
 	MENU_SELECT_FIRMWARE_UPDATE,
 	MENU_SELECT_EXIT,
@@ -42,14 +43,43 @@ typedef enum {
 } menu_select_e;
 
 typedef enum {
-	MENU_CONFIG_CHANNEL = 0,
-	MENU_CONFIG_CC,
-	MENU_CONFIG_MIN_RANGE,
-	MENU_CONFIG_MAX_RANGE,
-	MENU_CONFIG_STEP,
-	MENU_CONFIG_RETURN,
-	MENU_CONFIG_COUNT,
-} menu_config_select_e;
+	PRESET_MENU_PRESET = 0,
+	PRESET_MENU_LOAD,
+	PRESET_MENU_SAVE,
+	PRESET_MENU_RETURN,
+	PRESET_MENU_COUNT,
+} preset_menu_select_e;
+
+typedef enum {
+	KNOB_SETUP_SELECT_KNOB = 0,
+	KNOB_SETUP_CHANNEL,
+	KNOB_SETUP_CC,
+	KNOB_SETUP_MIN_RANGE,
+	KNOB_SETUP_MAX_RANGE,
+	KNOB_SETUP_STEP,
+	KNOB_SETUP_RETURN,
+	KNOB_SETUP_COUNT,
+} knob_setup_select_e;
+
+typedef enum {
+	BUTTON_SETUP_SELECT_BUTTON = 0,
+	BUTTON_SETUP_MIDI,
+	BUTTON_SETUP_CHANNEL,
+	BUTTON_SETUP_CC,
+	BUTTON_SETUP_DEFAULT_VALUE,
+	BUTTON_SETUP_PRESSED_VALUE,
+	BUTTON_SETUP_ONCLICK,
+	BUTTON_SETUP_ONCLICK_STEP,
+	BUTTON_SETUP_RETURN,
+	BUTTON_SETUP_COUNT,
+} button_setup_select_e;
+
+typedef enum {
+	SETTINGS_MENU_SCREEN = 0,
+	SETTINGS_MENU_SIMPLE_SCREEN,
+	SETTINGS_MENU_RETURN,
+	SETTINGS_MENU_COUNT,
+} settings_menu_select_e;
 
 
 typedef struct {
@@ -57,10 +87,6 @@ typedef struct {
 	uint8_t encoder_id;
 } encoder_event_t;
 
-typedef enum {
-	ACTION_LOAD = 0,
-	ACTION_SAVE,
-} action_load_save_e;
 
 class TaskOS : public TaskPrototype {
 public:
@@ -73,8 +99,15 @@ private:
 	void processMenuSelector(bool increase);
 	void processMenuButton();
 	void processPresetSelector(bool increase);
-	void processMidiUnitSelector(bool increase);
-	void processMidiParameterSelector(bool increase);
+	void processKnobSetupSelector(bool increase);
+	void processButtonSetupSelector(bool increase);
+	void processSettingsSelector(bool increase);
+	void refreshScreenSetupUi();
+	void captureKnobSetupSnapshot();
+	bool knobSetupParamsChanged() const;
+	void applySimpleScreenMode(uint8_t display_id, bool enabled);
+	ScreensEnum getMainScreenForDisplay(uint8_t display_id) const;
+	bool areAllSimpleScreensEnabled() const;
 
 	void setStateValue(uint8_t id, uint8_t value);
 	void setStateChannel(uint8_t id, uint8_t channel);
@@ -104,13 +137,21 @@ private:
 	NVS nvs;
 	ScreensEnum current_screen;
 	menu_select_e current_menu_selection;
-	action_load_save_e selected_action;
-	uint8_t preset_selection;	// 4 banks
-	uint8_t midi_unit_selection;	// 16 units
-	menu_config_select_e midi_config_selection; // 2 parameters
-	bool midi_parameter_selector_active;
-	bool midi_parameter_channel_selector_active;
-	bool midi_parameter_cc_selector_active;
+	preset_menu_select_e preset_menu_selection;
+	uint8_t preset_index;	// 4 banks
+	bool preset_edit_active;
+	knob_setup_select_e knob_setup_selection;
+	uint8_t knob_selection;	// 16 knobs
+	bool knob_setup_edit_active;
+	button_setup_select_e button_setup_selection;
+	uint8_t button_selection;	// 16 buttons
+	bool button_setup_edit_active;
+	settings_menu_select_e settings_menu_selection;
+	bool settings_screen_edit_active;
+	uint8_t settings_screen_index; // 0xFF = all, 0..15 = screen
+	module_state_t knob_setup_snapshot = {};
+	uint8_t knob_setup_snapshot_id = 0;
+	bool knob_setup_snapshot_valid = false;
 	uint32_t last_encoder_event_time[16] = {0};
 };
 

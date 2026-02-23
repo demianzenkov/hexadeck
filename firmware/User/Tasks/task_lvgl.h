@@ -49,11 +49,20 @@ public:
 	
 	void		lvgl_loadScreen(uint8_t display_id, enum ScreensEnum screen_id);
 	void		lvgl_selectMenu(uint16_t selected_index);
-	void		lvgl_selectPreset(uint8_t bank_index);
-	void		lvgl_selectMidiUnit(uint8_t unit_index);
-	void		lvgl_loadMidiUnitParameters(void * module_state); // module_state_t
-	void		lvgl_selectMidiParameter(uint8_t parameter_menu_index);
-	void		lvgl_activateMidiParameterSelector(bool active);
+	void		lvgl_selectPreset(uint8_t menu_index);
+	void		lvgl_loadPresetOptions(uint8_t preset_index);
+	void		lvgl_activatePresetSelector(bool active);
+	void		lvgl_selectKnobSetup(uint8_t selected_index);
+	void		lvgl_loadKnobSetupParameters(uint8_t knob_index, const module_state_t *state);
+	void		lvgl_activateKnobSetupSelector(bool active);
+	void		lvgl_selectButtonSetup(uint8_t selected_index);
+	void		lvgl_loadButtonSetupParameters(uint8_t button_index, const module_state_t *state);
+	void		lvgl_activateButtonSetupSelector(bool active);
+	void		lvgl_selectSettings(uint8_t selected_index);
+	void		lvgl_loadSettingsOptions(uint8_t screen_index, bool simple_screen_enabled);
+	void		lvgl_activateSettingsSelector(bool active);
+	void		setSimpleMode(uint8_t display_id, bool enabled);
+	bool		isSimpleMode(uint8_t display_id) const;
 	
 private:
 	static void taskUI(void const *arg);
@@ -73,6 +82,8 @@ private:
 	QueueHandle_t ui_update_queue;
 	QueueHandle_t ui_value_queue;
 	module_state_t current_ui_state = {};
+	bool simple_mode[16] = {};
+	bool last_simple_mode[16] = {};
 };
 
 
