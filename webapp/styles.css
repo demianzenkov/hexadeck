@@ -330,6 +330,12 @@ select:disabled {
   gap: 16px;
 }
 
+.panel-disabled {
+  opacity: 0.5;
+  filter: grayscale(0.35);
+  pointer-events: none;
+}
+
 .command-row {
   display: flex;
   flex-direction: column;

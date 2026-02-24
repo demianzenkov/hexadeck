@@ -71,6 +71,7 @@ const syncButton = document.getElementById("syncButton");
 const panelTitle = document.getElementById("panelTitle");
 const panelSubtitle = document.getElementById("panelSubtitle");
 const closePanel = document.getElementById("closePanel");
+const modulePanel = document.getElementById("panel");
 const tabDisplay = document.getElementById("tabDisplay");
 const tabKnob = document.getElementById("tabKnob");
 const tabButton = document.getElementById("tabButton");
@@ -122,9 +123,18 @@ function setConnected(connected, statusText) {
     panelSubtitle.textContent = "Click a display or encoder to edit.";
     [...document.querySelectorAll(".module")].forEach((el) => el.classList.remove("selected"));
   }
+  updatePanelSelectionState();
   if (lockOverlay) {
     lockOverlay.setAttribute("aria-hidden", connected ? "true" : "false");
   }
+}
+
+function updatePanelSelectionState() {
+  if (!modulePanel) {
+    return;
+  }
+  const hasSelection = state.selectedId !== null;
+  modulePanel.classList.toggle("panel-disabled", !hasSelection);
 }
 
 function isTargetOutput(output) {
@@ -339,6 +349,7 @@ function selectModule(id, type) {
   panelSubtitle.textContent = type === "knob" ? "Knob settings" : "Display settings";
   applyModuleToForms(id);
   setTab(state.selectedTab);
+  updatePanelSelectionState();
 }
 
 function setTab(tab) {
@@ -996,6 +1007,7 @@ closePanel.addEventListener("click", () => {
   [...document.querySelectorAll(".module")].forEach((el) => el.classList.remove("selected"));
   panelTitle.textContent = "Select a module";
   panelSubtitle.textContent = "Click a display or encoder to edit.";
+  updatePanelSelectionState();
 });
 
 tabDisplay.addEventListener("click", () => setTab("display"));
@@ -1108,3 +1120,4 @@ syncButton.addEventListener("click", () => {
 
 buildGrid();
 setConnected(false, "Disconnected");
+updatePanelSelectionState();
