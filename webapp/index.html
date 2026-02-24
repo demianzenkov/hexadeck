@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>8DOF Controller Config</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow"></div>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1>8DOF Controller</h1>
+          <p class="subtitle">USB MIDI SysEx configurator</p>
+        </div>
+        <div class="midi-controls">
+          <div class="midi-row">
+            <button id="demoButton" class="ghost">Run Demo</button>
+            <button id="connectButton" class="connect-button">Connect MIDI</button>
+            <select id="outputSelect" aria-label="MIDI output" disabled></select>
+            <select id="inputSelect" aria-label="MIDI input" disabled></select>
+          </div>
+          <div class="midi-row">
+            <span id="status" class="status idle">Disconnected</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="grid-section">
+        <div class="device-shell">
+          <div class="device-plate">
+            <div class="grid" id="grid"></div>
+            <div class="lock-overlay" id="lockOverlay">
+              <div class="lock-card">
+                <strong>Connect Hexadeck Controller</strong>
+                <span>Grid and settings unlock after MIDI connection.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel-stack">
+        <section class="panel panel-commands">
+          <div class="command-row">
+            <button id="syncButton" class="ghost">Sync State</button>
+            <button id="fwButton" class="ghost" title="Jump to bootloader">Firmware Update</button>
+          </div>
+        </section>
+
+        <section class="panel" id="panel">
+        <div class="panel-header">
+          <div>
+            <h2 id="panelTitle">Select a module</h2>
+            <p id="panelSubtitle">Click a display or encoder to edit.</p>
+          </div>
+          <button id="closePanel" class="ghost">Close</button>
+        </div>
+
+        <div class="panel-body">
+          <div class="tab-row">
+            <button id="tabDisplay" class="tab active">Display</button>
+            <button id="tabKnob" class="tab">Knob</button>
+            <button id="tabButton" class="tab">Button</button>
+          </div>
+
+          <section id="displayForm" class="form">
+            <div class="form-row">
+              <label for="nameInput">Name</label>
+              <input id="nameInput" type="text" maxlength="16" placeholder="Module name" />
+              <button id="sendName" class="ghost">Send</button>
+            </div>
+
+            <div class="form-grid colors">
+              <div class="form-row">
+                <label for="bgColor">Background</label>
+                <input id="bgColor" type="color" value="#1e1e1e" />
+                <button id="sendBgColor" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="borderColor">Border</label>
+                <input id="borderColor" type="color" value="#ffffff" />
+                <button id="sendBorderColor" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="textColor">Text</label>
+                <input id="textColor" type="color" value="#ffffff" />
+                <button id="sendTextColor" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="barColor">Bar</label>
+                <input id="barColor" type="color" value="#00ff88" />
+                <button id="sendBarColor" class="ghost">Send</button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label for="simpleModeToggle">Simple Mode</label>
+              <input id="simpleModeToggle" type="checkbox" />
+            </div>
+          </section>
+
+          <section id="knobForm" class="form hidden">
+            <div class="form-grid">
+              <div class="form-row">
+                <label for="knobValueInput">Value</label>
+                <input id="knobValueInput" type="number" min="0" max="127" value="64" />
+                <button id="sendKnobValue" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="knobChannelInput">Channel</label>
+                <input id="knobChannelInput" type="number" min="0" max="15" value="0" />
+                <button id="sendKnobChannel" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="knobCCInput">CC</label>
+                <input id="knobCCInput" type="number" min="0" max="127" value="0" />
+                <button id="sendKnobCC" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="knobRangeMinInput">Range Min</label>
+                <input id="knobRangeMinInput" type="number" min="0" max="127" value="0" />
+                <button id="sendKnobRangeMin" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="knobRangeMaxInput">Range Max</label>
+                <input id="knobRangeMaxInput" type="number" min="0" max="127" value="127" />
+                <button id="sendKnobRangeMax" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="knobStepInput">Step</label>
+                <input id="knobStepInput" type="number" min="1" max="127" value="1" />
+                <button id="sendKnobStep" class="ghost">Send</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="buttonForm" class="form hidden">
+            <div class="form-grid">
+              <div class="form-row">
+                <label for="buttonChannelInput">Channel</label>
+                <input id="buttonChannelInput" type="number" min="0" max="15" value="0" />
+                <button id="sendButtonChannel" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="buttonCCInput">CC</label>
+                <input id="buttonCCInput" type="number" min="0" max="127" value="0" />
+                <button id="sendButtonCC" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="buttonPressedInput">Value Pressed</label>
+                <input id="buttonPressedInput" type="number" min="0" max="127" value="127" />
+                <button id="sendButtonPressed" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="buttonReleasedInput">Value Released</label>
+                <input id="buttonReleasedInput" type="number" min="0" max="127" value="0" />
+                <button id="sendButtonReleased" class="ghost">Send</button>
+              </div>
+              <div class="form-row">
+                <label for="buttonStepInput">Clicked Step</label>
+                <input id="buttonStepInput" type="number" min="1" max="127" value="1" />
+                <button id="sendButtonStep" class="ghost">Send</button>
+              </div>
+            </div>
+
+            <div class="note">Button SysEx controls are now active.</div>
+          </section>
+        </div>
+        </section>
+      </aside>
+
+      <footer class="footer">
+        <span>Tip: WebMIDI requires a secure context (localhost is OK).</span>
+      </footer>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
