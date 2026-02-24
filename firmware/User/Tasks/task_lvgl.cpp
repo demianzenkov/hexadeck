@@ -191,6 +191,7 @@ void UI::lvgl_setUiState(module_state_t * state)
 		return;
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
+	last_state_ptr[state->display_id] = state;
 	
 	bool use_simple = isSimpleMode(state->display_id);
 	bool force_update = (current_ui_state.display_id != state->display_id);
@@ -356,6 +357,7 @@ void UI::lvgl_setUiState(module_state_t * state)
 			lv_obj_set_style_bg_color(objects.general_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
 	}
+	last_active_display_id = state->display_id;
 
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -365,6 +367,10 @@ void UI::lvgl_setValue(value_update_t value)
 {
 	if (value.id > 15)
 	{
+		return;
+	}
+	if(last_active_display_id != value.id && last_state_ptr[value.id] != nullptr) {
+		lvgl_setUiState(last_state_ptr[value.id]);
 		return;
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
@@ -383,6 +389,7 @@ void UI::lvgl_setValue(value_update_t value)
 		lv_bar_set_value(objects.level_bar, value.value, LV_ANIM_OFF);
 		lv_label_set_text(objects.level_label, value_str);
 	}
+	last_active_display_id = value.id;
 
 	xSemaphoreGive(ui_busy_mutex);
 }

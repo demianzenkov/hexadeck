@@ -82,6 +82,8 @@ private:
 	QueueHandle_t ui_update_queue;
 	QueueHandle_t ui_value_queue;
 	module_state_t current_ui_state = {};
+	module_state_t *last_state_ptr[16] = {};
+	uint8_t last_active_display_id = 0xFF;
 	bool simple_mode[16] = {};
 	bool last_simple_mode[16] = {};
 };

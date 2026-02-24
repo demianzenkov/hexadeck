@@ -25,7 +25,7 @@ TaskMIDI * TaskMIDI::getInstance()
 void TaskMIDI::createTask() {
 	midi_data_input_queue = xQueueCreate(8, sizeof(midi_data_ev_t));
     midi_output_queue = xQueueCreate(16, sizeof(midi_event_t));
-	midi_sysex_output_queue = xQueueCreate(8, sizeof(midi_sysex_event_t));
+	midi_sysex_output_queue = xQueueCreate(32, sizeof(midi_sysex_event_t));
 
 	osThreadDef(MIDITask, task, osPriorityNormal, 0, 512);
 	task_handle = osThreadCreate(osThread(MIDITask), this);
