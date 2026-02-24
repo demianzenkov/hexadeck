@@ -25,6 +25,7 @@ TaskMIDI * TaskMIDI::getInstance()
 void TaskMIDI::createTask() {
 	midi_data_input_queue = xQueueCreate(8, sizeof(midi_data_ev_t));
     midi_output_queue = xQueueCreate(16, sizeof(midi_event_t));
+	midi_sysex_output_queue = xQueueCreate(8, sizeof(midi_sysex_event_t));
 
 	osThreadDef(MIDITask, task, osPriorityNormal, 0, 512);
 	task_handle = osThreadCreate(osThread(MIDITask), this);
@@ -39,6 +40,26 @@ int TaskMIDI::sendMidiCC(uint8_t ch, uint8_t cc, uint8_t value)
 	midi_ev.value = value;
 	sendEvent(&midi_ev);
 
+	return 0;
+}
+
+int TaskMIDI::sendMidiSysex(const uint8_t *payload, size_t len)
+{
+	if(!payload || len == 0) {
+		return -1;
+	}
+	midi_sysex_event_t sysex_ev = {};
+	if(len + 3 > sizeof(sysex_ev.buffer)) {
+		return -2;
+	}
+	sysex_ev.buffer[0] = MIDI_MSG_STATUS_SYSEX_START;
+	sysex_ev.buffer[1] = 0x7D; // Non-commercial manufacturer ID
+	memcpy(&sysex_ev.buffer[2], payload, len);
+	sysex_ev.buffer[len + 2] = MIDI_MSG_STATUS_SYSEX_END;
+	sysex_ev.len = len + 3;
+	if(xQueueSend(midi_sysex_output_queue, &sysex_ev, 0) != pdPASS) {
+		return -3;
+	}
 	return 0;
 }
 
@@ -97,11 +118,44 @@ void TaskMIDI::task(void const *arg)
 	TaskMIDI *p_this = (TaskMIDI *)arg;
     midi_event_t midi_ev = {};
 	midi_data_ev_t midi_data_ev = {};
+	midi_sysex_event_t midi_sysex_ev = {};
 
 
 	MX_USB_DEVICE_Init();
 	while (1) {
-        if(xQueueReceive(p_this->midi_output_queue, &midi_ev, 0) == pdTRUE) {
+		if(xQueueReceive(p_this->midi_sysex_output_queue, &midi_sysex_ev, 0) == pdTRUE) {
+			size_t index = 0;
+			while(index < midi_sysex_ev.len) {
+				size_t remaining = midi_sysex_ev.len - index;
+				uint8_t usb_midi_report[4] = {0};
+				uint8_t cin = 0x4;
+				if(remaining >= 3) {
+					if(remaining == 3) {
+						cin = 0x7;
+					}
+					usb_midi_report[1] = midi_sysex_ev.buffer[index++];
+					usb_midi_report[2] = midi_sysex_ev.buffer[index++];
+					usb_midi_report[3] = midi_sysex_ev.buffer[index++];
+				} else if(remaining == 2) {
+					cin = 0x6;
+					usb_midi_report[1] = midi_sysex_ev.buffer[index++];
+					usb_midi_report[2] = midi_sysex_ev.buffer[index++];
+					usb_midi_report[3] = 0x00;
+				} else {
+					cin = 0x5;
+					usb_midi_report[1] = midi_sysex_ev.buffer[index++];
+					usb_midi_report[2] = 0x00;
+					usb_midi_report[3] = 0x00;
+				}
+				usb_midi_report[0] = cin;
+				while (MIDI_GetState() != MIDI_IDLE) {
+					continue;
+				};
+				MIDI_SendReport(usb_midi_report, 4);
+			}
+		}
+
+		if(xQueueReceive(p_this->midi_output_queue, &midi_ev, 0) == pdTRUE) {
 			if(midi_ev.message_type == MIDI_MSG_TYPE_CC) {
 				uint8_t usb_midi_report[4];
 				usb_midi_report[0] = (midi_ev.message_type >> 4) & 0x0F;

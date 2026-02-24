@@ -10,3 +10,4 @@ build/
 *.make
 .cproject
 .mxproject
+*.code-workspace

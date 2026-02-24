@@ -11,22 +11,22 @@ TaskOS::TaskOS()
 	acm_p = ACM::getInstance();
 
 	const module_state_t init_states[16] = {
-		{0,  64,  0, 0,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Bank", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{1,  64,  0, 1,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Wheel", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{2,  64,  0, 2,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Breath", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{3,  64,  0, 3,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "CC-3", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{4,  64,  0, 4,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Foot", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{5,  64,  0, 5,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Portamento", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{6,  64,  0, 6,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Data Entry", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{7,  64,  0, 7,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Volume", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{8,	 64,  0, 8,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "Balance", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{9,  64,  0, 9,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127, "CC-9", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{10, 64,  0, 10, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127,  "Pan", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{11, 64,  0, 11, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127,  "Expression", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{12, 64,  0, 12, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127,  "Effect-1", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{13, 64,  0, 13, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127,  "Effect-2", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{14, 64,  0, 14, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127,  "CC-14", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)},
-		{15, 64,  0, 15, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 10, 0, 2, 0, 127,  "CC-15", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(255, 255, 255)}
+		{0,  64,  0, 0,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Bank", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{1,  64,  0, 1,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Wheel", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{2,  64,  0, 2,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Breath", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{3,  64,  0, 3,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "CC-3", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{4,  64,  0, 4,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Foot", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{5,  64,  0, 5,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Portamento", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{6,  64,  0, 6,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Data Entry", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{7,  64,  0, 7,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Volume", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{8,	 64,  0, 8,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "Balance", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{9,  64,  0, 9,  0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127, "CC-9", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{10, 64,  0, 10, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127,  "Pan", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{11, 64,  0, 11, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127,  "Expression", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{12, 64,  0, 12, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127,  "Effect-1", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{13, 64,  0, 13, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127,  "Effect-2", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{14, 64,  0, 14, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127,  "CC-14", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)},
+		{15, 64,  0, 15, 0, 127, 1, 1, BUTTON_MIDI_ENABLED, BUTTON_ONCLICK_STEP, 0, 10, 0, 2, 0, 127,  "CC-15", lv_color_make(0x1e, 0x1e, 0x1e), lv_color_make(0, 0xff, 0x88), lv_color_make(255, 255, 255), lv_color_make(0, 0xff, 0x88)}
 	};
 	for (int i = 0; i < 16; i++) {
 		memcpy(&module_states[i], &init_states[i], sizeof(module_state_t));
@@ -135,7 +135,6 @@ bool TaskOS::knobSetupParamsChanged() const
 		(state->step != knob_setup_snapshot.step);
 }
 
-
 void TaskOS::createTask()
 {
 	encoder_event_queue = xQueueCreate(64, sizeof(encoder_event_t));
@@ -152,7 +151,6 @@ void TaskOS::createTask()
 	osThreadDef(OSTask, task, osPriorityNormal, 0, 512);
 	task_handle = osThreadCreate(osThread(OSTask), this);
 }
-
 
 void TaskOS::processEncoderEvent(encoder_event_t * encoder_event)
 {
@@ -177,7 +175,6 @@ void TaskOS::processEncoderEvent(encoder_event_t * encoder_event)
 		ui_p->refreshDisplayValue(enc_id, module_state->value, module_state->max_value);
 	}
 }
-
 
 void TaskOS::processMenuButton()
 {
@@ -349,7 +346,6 @@ void TaskOS::processMenuButton()
 			break;
 	}
 }
-
 
 void TaskOS::processMenuSelector(bool increase)
 {
@@ -574,38 +570,38 @@ void TaskOS::processButtonSetupSelector(bool increase)
 				break;
 			case BUTTON_SETUP_CC:
 				if(increase) {
-					if(module_states[button_selection].button_cc < 127) {
-						module_states[button_selection].button_cc++;
+					if(module_states[button_selection].button_midi_cc < 127) {
+						module_states[button_selection].button_midi_cc++;
 					} else {
-						module_states[button_selection].button_cc = 0;
+						module_states[button_selection].button_midi_cc = 0;
 					}
 				} else {
-					if(module_states[button_selection].button_cc > 0) {
-						module_states[button_selection].button_cc--;
+					if(module_states[button_selection].button_midi_cc > 0) {
+						module_states[button_selection].button_midi_cc--;
 					} else {
-						module_states[button_selection].button_cc = 127;
+						module_states[button_selection].button_midi_cc = 127;
 					}
 				}
 				break;
 			case BUTTON_SETUP_DEFAULT_VALUE:
 				if(increase) {
-					if(module_states[button_selection].button_default_value < 127) {
-						module_states[button_selection].button_default_value++;
+					if(module_states[button_selection].button_midi_released_value < 127) {
+						module_states[button_selection].button_midi_released_value++;
 					}
 				} else {
-					if(module_states[button_selection].button_default_value > 0) {
-						module_states[button_selection].button_default_value--;
+					if(module_states[button_selection].button_midi_released_value > 0) {
+						module_states[button_selection].button_midi_released_value--;
 					}
 				}
 				break;
 			case BUTTON_SETUP_PRESSED_VALUE:
 				if(increase) {
-					if(module_states[button_selection].button_pressed_value < 127) {
-						module_states[button_selection].button_pressed_value++;
+					if(module_states[button_selection].button_midi_pressed_value < 127) {
+						module_states[button_selection].button_midi_pressed_value++;
 					}
 				} else {
-					if(module_states[button_selection].button_pressed_value > 0) {
-						module_states[button_selection].button_pressed_value--;
+					if(module_states[button_selection].button_midi_pressed_value > 0) {
+						module_states[button_selection].button_midi_pressed_value--;
 					}
 				}
 				break;
@@ -614,6 +610,13 @@ void TaskOS::processButtonSetupSelector(bool increase)
 					(module_states[button_selection].button_onclick_mode == BUTTON_ONCLICK_STEP)
 					? BUTTON_ONCLICK_DISABLED
 					: BUTTON_ONCLICK_STEP;
+					if(module_states[button_selection].button_onclick_mode == BUTTON_ONCLICK_DISABLED &&
+						module_states[button_selection].button_onclick_active) {
+						uint8_t temp_step = module_states[button_selection].step;
+						module_states[button_selection].step = module_states[button_selection].button_onclick_step;
+						module_states[button_selection].button_onclick_step = temp_step;
+						module_states[button_selection].button_onclick_active = 0;
+					}
 				break;
 			case BUTTON_SETUP_ONCLICK_STEP:
 				if(increase) {
@@ -837,11 +840,11 @@ void TaskOS::task(void const *arg)
 							module_state_t *button_state = &p_this->module_states[button_ev.button_id];
 							if(button_state->button_midi_enabled == BUTTON_MIDI_ENABLED) {
 								uint8_t cc_value = button_ev.state
-									? button_state->button_pressed_value
-									: button_state->button_default_value;
+									? button_state->button_midi_pressed_value
+									: button_state->button_midi_released_value;
 								p_this->task_midi_p->sendMidiCC(
 									button_state->button_midi_channel,
-									button_state->button_cc,
+									button_state->button_midi_cc,
 									cc_value
 								);
 							}
@@ -849,6 +852,7 @@ void TaskOS::task(void const *arg)
 								uint8_t temp_step = button_state->step;
 								button_state->step = button_state->button_onclick_step;
 								button_state->button_onclick_step = temp_step;
+								button_state->button_onclick_active = button_state->button_onclick_active ? 0 : 1;
 								p_this->ui_p->refreshDisplayState(button_ev.button_id, button_state);
 							}
 						}
@@ -1045,6 +1049,84 @@ void TaskOS::task(void const *arg)
 					}
 					break;
 				}
+				case MIDI_SYS_SET_STEP: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t step = sysex_input_ev.buffer[2];
+						if(step < 1) {
+							step = 1;
+						}
+						p_this->module_states[id].step = step;
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_BUTTON_ONCLICK_MODE: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t mode = sysex_input_ev.buffer[2];
+						p_this->module_states[id].button_onclick_mode = (mode == BUTTON_ONCLICK_STEP)
+							? BUTTON_ONCLICK_STEP
+							: BUTTON_ONCLICK_DISABLED;
+						if(p_this->module_states[id].button_onclick_mode == BUTTON_ONCLICK_DISABLED &&
+							p_this->module_states[id].button_onclick_active) {
+							uint8_t temp_step = p_this->module_states[id].step;
+							p_this->module_states[id].step = p_this->module_states[id].button_onclick_step;
+							p_this->module_states[id].button_onclick_step = temp_step;
+							p_this->module_states[id].button_onclick_active = 0;
+						}
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_BUTTON_ONCLICK_STEP: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t step = sysex_input_ev.buffer[2];
+						if(step < 1) {
+							step = 1;
+						}
+						p_this->module_states[id].button_onclick_step = step;
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_BUTTON_MIDI_CHANNEL: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t channel = sysex_input_ev.buffer[2];
+						p_this->module_states[id].button_midi_channel = channel & 0x0F;
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_BUTTON_MIDI_CC: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t cc = sysex_input_ev.buffer[2];
+						p_this->module_states[id].button_midi_cc = cc;
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_BUTTON_MIDI_RELEASED_VALUE: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t value = sysex_input_ev.buffer[2];
+						p_this->module_states[id].button_midi_released_value = value;
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
+				case MIDI_SYS_SET_BUTTON_MIDI_PRESSED_VALUE: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					if(id < 16) {
+						uint8_t value = sysex_input_ev.buffer[2];
+						p_this->module_states[id].button_midi_pressed_value = value;
+						p_this->ui_p->refreshDisplayState(id, &p_this->module_states[id]);
+					}
+					break;
+				}
 				case MIDI_SYS_SET_COLOR_BG: {
 					uint8_t id = sysex_input_ev.buffer[1];
 					if(id < 16) {
@@ -1096,6 +1178,129 @@ void TaskOS::task(void const *arg)
 				}
 				case MIDI_SYS_FIRMWARE_UPDATE: {
 					JumpToBootloader();
+					break;
+				}
+				case MIDI_SYS_GET_NAME:
+				case MIDI_SYS_GET_VALUE:
+				case MIDI_SYS_GET_CHANNEL:
+				case MIDI_SYS_GET_CC:
+				case MIDI_SYS_GET_RANGE:
+				case MIDI_SYS_GET_STEP:
+				case MIDI_SYS_GET_BUTTON_ONCLICK_MODE:
+				case MIDI_SYS_GET_BUTTON_ONCLICK_STEP:
+				case MIDI_SYS_GET_BUTTON_MIDI_CHANNEL:
+				case MIDI_SYS_GET_BUTTON_MIDI_CC:
+				case MIDI_SYS_GET_BUTTON_MIDI_RELEASED_VALUE:
+				case MIDI_SYS_GET_BUTTON_MIDI_PRESSED_VALUE:
+				case MIDI_SYS_GET_COLOR_BG:
+				case MIDI_SYS_GET_COLOR_BORDER:
+				case MIDI_SYS_GET_COLOR_TEXT:
+				case MIDI_SYS_GET_COLOR_BAR: {
+					uint8_t id = sysex_input_ev.buffer[1];
+					auto send_reply = [&](uint8_t module_id) {
+						module_state_t * module_state = &p_this->module_states[module_id];
+						switch(event_type) {
+							case MIDI_SYS_GET_NAME: {
+								uint8_t payload[2 + MAX_NAME_LENGTH] = {};
+								payload[0] = MIDI_SYS_GET_NAME;
+								payload[1] = module_id;
+								strncpy((char *)&payload[2], module_state->name, MAX_NAME_LENGTH);
+								p_this->task_midi_p->sendMidiSysex(payload, 2 + strnlen(module_state->name, MAX_NAME_LENGTH));
+								break;
+							}
+							case MIDI_SYS_GET_VALUE: {
+								uint8_t payload[3] = {MIDI_SYS_GET_VALUE, module_id, module_state->value};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_CHANNEL: {
+								uint8_t payload[3] = {MIDI_SYS_GET_CHANNEL, module_id, module_state->channel};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_CC: {
+								uint8_t payload[3] = {MIDI_SYS_GET_CC, module_id, module_state->cc};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_RANGE: {
+								uint8_t payload[3] = {MIDI_SYS_GET_RANGE, module_id, module_state->max_value};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_STEP: {
+								uint8_t payload[3] = {MIDI_SYS_GET_STEP, module_id, module_state->step};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_BUTTON_ONCLICK_MODE: {
+								uint8_t payload[3] = {MIDI_SYS_GET_BUTTON_ONCLICK_MODE, module_id, module_state->button_onclick_mode};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_BUTTON_ONCLICK_STEP: {
+								uint8_t payload[3] = {MIDI_SYS_GET_BUTTON_ONCLICK_STEP, module_id, module_state->button_onclick_step};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_BUTTON_MIDI_CHANNEL: {
+								uint8_t payload[3] = {MIDI_SYS_GET_BUTTON_MIDI_CHANNEL, module_id, module_state->button_midi_channel};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_BUTTON_MIDI_CC: {
+								uint8_t payload[3] = {MIDI_SYS_GET_BUTTON_MIDI_CC, module_id, module_state->button_midi_cc};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_BUTTON_MIDI_RELEASED_VALUE: {
+								uint8_t payload[3] = {MIDI_SYS_GET_BUTTON_MIDI_RELEASED_VALUE, module_id, module_state->button_midi_released_value};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_BUTTON_MIDI_PRESSED_VALUE: {
+								uint8_t payload[3] = {MIDI_SYS_GET_BUTTON_MIDI_PRESSED_VALUE, module_id, module_state->button_midi_pressed_value};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							case MIDI_SYS_GET_COLOR_BG:
+							case MIDI_SYS_GET_COLOR_BORDER:
+							case MIDI_SYS_GET_COLOR_TEXT:
+							case MIDI_SYS_GET_COLOR_BAR: {
+								lv_color_t color = module_state->background_color;
+								if(event_type == MIDI_SYS_GET_COLOR_BORDER) {
+									color = module_state->border_color;
+								} else if(event_type == MIDI_SYS_GET_COLOR_TEXT) {
+									color = module_state->text_color;
+								} else if(event_type == MIDI_SYS_GET_COLOR_BAR) {
+									color = module_state->bar_color;
+								}
+								lv_color32_t rgb = lv_color_to_32(color, LV_OPA_COVER);
+								uint8_t r = rgb.red;
+								uint8_t g = rgb.green;
+								uint8_t b = rgb.blue;
+								uint8_t payload[8] = {
+									(uint8_t)event_type,
+									module_id,
+									(uint8_t)(r & 0x7F), (uint8_t)((r >> 7) & 0x7F),
+									(uint8_t)(g & 0x7F), (uint8_t)((g >> 7) & 0x7F),
+									(uint8_t)(b & 0x7F), (uint8_t)((b >> 7) & 0x7F)
+								};
+								p_this->task_midi_p->sendMidiSysex(payload, sizeof(payload));
+								break;
+							}
+							default:
+								break;
+						}
+					};
+					if(id == 0xFF) {
+						for(uint8_t module_id = 0; module_id < 16; module_id++) {
+							send_reply(module_id);
+							vTaskDelay(2);
+						}
+					} else if(id < 16) {
+						send_reply(id);
+					}
 					break;
 				}
 				default:

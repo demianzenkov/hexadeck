@@ -27,6 +27,29 @@ typedef enum {
 	MIDI_SYS_SET_COLOR_TEXT,
 	MIDI_SYS_SET_COLOR_BAR,
 	MIDI_SYS_FIRMWARE_UPDATE,
+	MIDI_SYS_GET_NAME,
+	MIDI_SYS_GET_VALUE,
+	MIDI_SYS_GET_CHANNEL,
+	MIDI_SYS_GET_CC,
+	MIDI_SYS_GET_RANGE,
+	MIDI_SYS_GET_COLOR_BG,
+	MIDI_SYS_GET_COLOR_BORDER,
+	MIDI_SYS_GET_COLOR_TEXT,
+	MIDI_SYS_GET_COLOR_BAR,
+	MIDI_SYS_SET_STEP,
+	MIDI_SYS_SET_BUTTON_ONCLICK_MODE,
+	MIDI_SYS_SET_BUTTON_ONCLICK_STEP,
+	MIDI_SYS_SET_BUTTON_MIDI_CHANNEL,
+	MIDI_SYS_SET_BUTTON_MIDI_CC,
+	MIDI_SYS_SET_BUTTON_MIDI_RELEASED_VALUE,
+	MIDI_SYS_SET_BUTTON_MIDI_PRESSED_VALUE,
+	MIDI_SYS_GET_STEP,
+	MIDI_SYS_GET_BUTTON_ONCLICK_MODE,
+	MIDI_SYS_GET_BUTTON_ONCLICK_STEP,
+	MIDI_SYS_GET_BUTTON_MIDI_CHANNEL,
+	MIDI_SYS_GET_BUTTON_MIDI_CC,
+	MIDI_SYS_GET_BUTTON_MIDI_RELEASED_VALUE,
+	MIDI_SYS_GET_BUTTON_MIDI_PRESSED_VALUE,
 } midi_sys_event_type_e; 
 
 
@@ -58,12 +81,14 @@ public:
 	void createTask() override;
 	int sendEvent(midi_event_t * ev);
 	int sendMidiCC(uint8_t ch, uint8_t cc, uint8_t value);
+	int sendMidiSysex(const uint8_t *payload, size_t len);
 private:
 	static void task(void const *arg);
 	int parseSysexMessage(uint8_t * data_buffer, size_t len, midi_sysex_event_t * out_sysex_ev);
 public:
 	QueueHandle_t midi_data_input_queue;
 	QueueHandle_t midi_output_queue;
+	QueueHandle_t midi_sysex_output_queue;
 };
 
 

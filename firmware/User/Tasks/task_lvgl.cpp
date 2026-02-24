@@ -338,6 +338,16 @@ void UI::lvgl_setUiState(module_state_t * state)
 			lv_obj_set_style_text_color(objects.range_max_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
 	}
+	if(force_update || (current_ui_state.button_onclick_active != state->button_onclick_active) || (lv_color_eq(current_ui_state.text_color, state->text_color) == false)) {
+		current_ui_state.button_onclick_active = state->button_onclick_active;
+		lv_obj_t *panel = use_simple ? objects.general_panel_simple : objects.general_panel;
+		if(state->button_onclick_active) {
+			lv_obj_set_style_border_width(panel, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+			lv_obj_set_style_border_color(panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+		} else {
+			lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+		}
+	}
 	if(force_update || (lv_color_eq(current_ui_state.background_color, state->background_color) == false)) {
 		current_ui_state.background_color = state->background_color;
 		if(use_simple) {
@@ -491,9 +501,9 @@ void UI::lvgl_loadButtonSetupParameters(uint8_t button_index, const module_state
 		button_index + 1,
 		midi_str,
 		state->button_midi_channel + 1,
-		state->button_cc,
-		state->button_default_value,
-		state->button_pressed_value,
+		state->button_midi_cc,
+		state->button_midi_released_value,
+		state->button_midi_pressed_value,
 		onclick_str,
 		state->button_onclick_step
 	);
