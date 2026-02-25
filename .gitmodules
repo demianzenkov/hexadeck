@@ -1,3 +1,6 @@
 [submodule "firmware/Middlewares/Third_Party/lvgl"]
 	path = firmware/Middlewares/Third_Party/lvgl
 	url = https://github.com/lvgl/lvgl.git
+[submodule "webapp/modules/webdfu"]
+	path = webapp/modules/webdfu
+	url = git@github.com:devanlai/webdfu.git

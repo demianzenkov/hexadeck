@@ -52,6 +52,15 @@
           <div class="command-row">
             <button id="syncButton" class="ghost">Sync State</button>
             <button id="fwButton" class="ghost" title="Jump to bootloader">Firmware Update</button>
+            <div class="dfu-progress hidden" id="dfuProgress" aria-live="polite">
+              <div class="dfu-progress-row">
+                <span class="dfu-progress-label">DFU Update</span>
+                <span class="dfu-progress-value" id="dfuProgressValue">0%</span>
+              </div>
+              <progress id="dfuProgressBar" value="0" max="100"></progress>
+              <div class="dfu-status" id="dfuProgressStatus">Select firmware to start.</div>
+            </div>
+            <input id="dfuFileInput" type="file" accept=".bin,application/octet-stream" hidden />
           </div>
         </section>
 
@@ -182,6 +191,8 @@
       </footer>
     </main>
 
+    <script src="modules/webdfu/dfu-util/dfu.js"></script>
+    <script src="modules/webdfu/dfu-util/dfuse.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

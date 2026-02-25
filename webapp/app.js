@@ -42,6 +42,9 @@ const BUTTON_ONCLICK_STEP = 0;
 const BUTTON_MIDI_ENABLED = 0;
 
 const TARGET_DEVICE_NAME = "Hexadeck Controller";
+const DFU_TARGET_MEMORY = "@Internal Flash /0x08000000/04*016Kg,01*064Kg,03*128Kg";
+const DFU_START_ADDRESS = 0x08000000;
+const DFU_TRANSFER_SIZE_FALLBACK = 2048;
 
 const state = {
   midiAccess: null,
@@ -79,6 +82,11 @@ const displayForm = document.getElementById("displayForm");
 const knobForm = document.getElementById("knobForm");
 const buttonForm = document.getElementById("buttonForm");
 const lockOverlay = document.getElementById("lockOverlay");
+const dfuFileInput = document.getElementById("dfuFileInput");
+const dfuProgress = document.getElementById("dfuProgress");
+const dfuProgressBar = document.getElementById("dfuProgressBar");
+const dfuProgressValue = document.getElementById("dfuProgressValue");
+const dfuProgressStatus = document.getElementById("dfuProgressStatus");
 
 const nameInput = document.getElementById("nameInput");
 const bgColor = document.getElementById("bgColor");
@@ -106,6 +114,36 @@ function setStatus(text, ready) {
   statusEl.textContent = text;
   statusEl.classList.toggle("ready", ready);
   statusEl.classList.toggle("idle", !ready);
+}
+
+function setDfuStatus(text, isError = false) {
+  if (!dfuProgressStatus) {
+    return;
+  }
+  dfuProgressStatus.textContent = text;
+  dfuProgressStatus.classList.toggle("error", isError);
+}
+
+function setDfuProgressState(visible, value, total) {
+  if (!dfuProgress || !dfuProgressBar || !dfuProgressValue) {
+    return;
+  }
+  dfuProgress.classList.toggle("hidden", !visible);
+  if (!visible) {
+    return;
+  }
+  if (typeof total === "number" && Number.isFinite(total)) {
+    dfuProgressBar.max = total;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    dfuProgressBar.value = value;
+  }
+  if (typeof total === "number" && total > 0) {
+    const percent = Math.min(100, Math.round((dfuProgressBar.value / total) * 100));
+    dfuProgressValue.textContent = `${percent}%`;
+  } else {
+    dfuProgressValue.textContent = "";
+  }
 }
 
 function setConnected(connected, statusText) {
@@ -829,6 +867,158 @@ function handleSysexMessage(payload) {
   }
 }
 
+function chooseDfuInterface(interfaces) {
+  if (!interfaces || !interfaces.length) {
+    return null;
+  }
+  const exact = interfaces.find((intf) => {
+    const name = intf.name || "";
+    return (
+      intf.alternate.interfaceProtocol === 0x02 &&
+      (name.includes(DFU_TARGET_MEMORY) || (name.includes("@Internal Flash") && name.includes("0x08000000")))
+    );
+  });
+  if (exact) {
+    return exact;
+  }
+  return interfaces.find((intf) => intf.alternate.interfaceProtocol === 0x02) || interfaces[0];
+}
+
+async function fixInterfaceNames(device, interfaces) {
+  if (!interfaces.some((intf) => intf.name == null)) {
+    return;
+  }
+  const tempDevice = new dfu.Device(device, interfaces[0]);
+  await tempDevice.device_.open();
+  await tempDevice.device_.selectConfiguration(1);
+  const mapping = await tempDevice.readInterfaceNames();
+  await tempDevice.close();
+
+  interfaces.forEach((intf) => {
+    if (intf.name !== null) {
+      return;
+    }
+    const configIndex = intf.configuration.configurationValue;
+    const intfNumber = intf["interface"].interfaceNumber;
+    const alt = intf.alternate.alternateSetting;
+    if (mapping?.[configIndex]?.[intfNumber]?.[alt]) {
+      intf.name = mapping[configIndex][intfNumber][alt];
+    }
+  });
+}
+
+async function getDFUDescriptorProperties(device) {
+  try {
+    const data = await device.readConfigurationDescriptor(0);
+    const configDesc = dfu.parseConfigurationDescriptor(data);
+    const configValue = device.settings.configuration.configurationValue;
+    let funcDesc = null;
+    if (configDesc.bConfigurationValue === configValue) {
+      for (const desc of configDesc.descriptors) {
+        if (desc.bDescriptorType === 0x21 && Object.prototype.hasOwnProperty.call(desc, "bcdDFUVersion")) {
+          funcDesc = desc;
+          break;
+        }
+      }
+    }
+    if (!funcDesc) {
+      return {};
+    }
+    return {
+      WillDetach: (funcDesc.bmAttributes & 0x08) !== 0,
+      ManifestationTolerant: (funcDesc.bmAttributes & 0x04) !== 0,
+      CanUpload: (funcDesc.bmAttributes & 0x02) !== 0,
+      CanDnload: (funcDesc.bmAttributes & 0x01) !== 0,
+      TransferSize: funcDesc.wTransferSize,
+      DetachTimeOut: funcDesc.wDetachTimeOut,
+      DFUVersion: funcDesc.bcdDFUVersion,
+    };
+  } catch (error) {
+    return {};
+  }
+}
+
+async function startDfuUpdate(file) {
+  if (!navigator.usb) {
+    setDfuStatus("WebUSB not available in this browser.", true);
+    return;
+  }
+
+  if (state.output && state.connected) {
+    state.output.send([0xf0, MIDI_SYS_FIRMWARE_UPDATE, 0xf7]);
+    setDfuStatus("Requested bootloader. Select the DFU device...");
+  }
+
+  let selectedDevice;
+  try {
+    selectedDevice = await navigator.usb.requestDevice({
+      filters: [{ classCode: 0xfe, subclassCode: 0x01 }],
+    });
+  } catch (error) {
+    setDfuStatus("DFU device selection cancelled.");
+    return;
+  }
+
+  let interfaces = dfu.findDeviceDfuInterfaces(selectedDevice);
+  if (!interfaces.length) {
+    throw new Error("No DFU interfaces found on the selected device.");
+  }
+  await fixInterfaceNames(selectedDevice, interfaces);
+  const settings = chooseDfuInterface(interfaces);
+  if (!settings) {
+    throw new Error("No compatible DFU interface found.");
+  }
+  if (settings.alternate.interfaceProtocol !== 0x02) {
+    throw new Error("Selected interface is not in DFU mode. Put the device in bootloader mode.");
+  }
+
+  const isDfuSe = Boolean(settings.name && settings.name.startsWith("@"));
+  const dfuDevice = isDfuSe
+    ? new dfuse.Device(selectedDevice, settings)
+    : new dfu.Device(selectedDevice, settings);
+
+  dfuDevice.logProgress = (done, total) => {
+    if (typeof total !== "undefined") {
+      setDfuProgressState(true, done, total);
+    } else {
+      setDfuProgressState(true, done, file.size);
+    }
+  };
+  dfuDevice.logInfo = (msg) => setDfuStatus(msg);
+  dfuDevice.logWarning = (msg) => setDfuStatus(msg);
+  dfuDevice.logError = (msg) => setDfuStatus(msg, true);
+
+  await dfuDevice.open();
+
+  const desc = await getDFUDescriptorProperties(dfuDevice);
+  const transferSize = desc.TransferSize || DFU_TRANSFER_SIZE_FALLBACK;
+  const manifestationTolerant = desc.ManifestationTolerant !== false;
+
+  if (dfuDevice instanceof dfuse.Device) {
+    dfuDevice.startAddress = DFU_START_ADDRESS;
+  }
+
+  try {
+    const status = await dfuDevice.getStatus();
+    if (status.state === dfu.dfuERROR) {
+      await dfuDevice.clearStatus();
+    }
+  } catch (error) {
+    setDfuStatus("Warning: failed to clear DFU status.");
+  }
+
+  const payload = await file.arrayBuffer();
+  await dfuDevice.do_download(transferSize, payload, manifestationTolerant);
+  setDfuProgressState(true, file.size, file.size);
+  setDfuStatus("Update complete. Device resetting...");
+
+  try {
+    await dfuDevice.close();
+  } catch (error) {
+    // Ignore close errors after reset.
+  }
+}
+
 async function connectMIDI() {
   if (state.demoMode) {
     setStatus("Disable demo mode to connect MIDI", false);
@@ -1015,12 +1205,30 @@ fwButton.addEventListener("click", () => {
     setStatus("Demo mode: MIDI disabled", false);
     return;
   }
-  if (!state.output) {
-    setStatus("Select a MIDI output", false);
+  if (!dfuFileInput) {
+    setDfuStatus("Firmware picker unavailable.", true);
     return;
   }
-  state.output.send([0xf0, MIDI_SYS_FIRMWARE_UPDATE, 0xf7]);
+  dfuFileInput.click();
 });
+
+if (dfuFileInput) {
+  dfuFileInput.addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) {
+      return;
+    }
+    setDfuProgressState(true, 0, file.size);
+    setDfuStatus(`Selected ${file.name}. Starting DFU...`);
+    try {
+      await startDfuUpdate(file);
+    } catch (error) {
+      setDfuStatus(`DFU failed: ${error}`, true);
+    } finally {
+      dfuFileInput.value = "";
+    }
+  });
+}
 
 closePanel.addEventListener("click", () => {
   state.selectedId = null;
