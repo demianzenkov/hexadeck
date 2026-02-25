@@ -289,23 +289,12 @@ select:disabled {
   height: 48px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #f6f2e9, #dad3c7 60%, #b7afa2);
-  border: 2px solid #f7f3ea;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--knob-border, #f7f3ea);
+  box-shadow: var(--knob-glow, none), inset 0 2px 4px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   position: relative;
 }
 
-.knob::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  width: 6px;
-  height: 10px;
-  margin-left: -3px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.35);
-}
 
 .module.selected {
   outline: 2px solid var(--accent-2);

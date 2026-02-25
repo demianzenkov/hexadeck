@@ -133,8 +133,8 @@ function updatePanelSelectionState() {
   if (!modulePanel) {
     return;
   }
-  const hasSelection = state.selectedId !== null;
-  modulePanel.classList.toggle("panel-disabled", !hasSelection);
+  const shouldDisable = !state.demoMode && state.selectedId === null;
+  modulePanel.classList.toggle("panel-disabled", shouldDisable);
 }
 
 function isTargetOutput(output) {
@@ -177,6 +177,7 @@ function createDefaultModuleState(id) {
         channel: false,
         cc: false,
       },
+      isPressed: false,
       onclickMode: 0,
       onclickActive: 0,
     },
@@ -279,6 +280,7 @@ function buildGrid() {
       screenValue,
       screenMax,
       screenBarFill,
+      knob,
     };
 
     updateModuleUI(i);
@@ -311,6 +313,10 @@ function updateModuleUI(id) {
   els.screen.style.setProperty("--screen-border", borderColor);
   els.screen.style.setProperty("--screen-text", moduleState.colors.text);
   els.screen.style.setProperty("--screen-bar", moduleState.colors.bar);
+  const knobBorder = moduleState.button.isPressed ? "#00ff88" : "#f7f3ea";
+  els.knob.style.setProperty("--knob-border", knobBorder);
+  const knobGlow = moduleState.button.isPressed ? "0 0 10px rgba(0, 255, 136, 0.55)" : "none";
+  els.knob.style.setProperty("--knob-glow", knobGlow);
 }
 
 function applyModuleToForms(id) {
@@ -540,16 +546,30 @@ function handleMIDIMessage(event) {
       if (moduleState.button.midiEnabled !== true && moduleState.button.midiEnabled !== BUTTON_MIDI_ENABLED) {
         return;
       }
-      if (value !== moduleState.button.released) {
-        return;
+      let shouldUpdate = false;
+      if (value === moduleState.button.pressed) {
+        if (!moduleState.button.isPressed) {
+          moduleState.button.isPressed = true;
+          shouldUpdate = true;
+          logModuleState(moduleId, "button-press", { channel, cc, value });
+        }
+      } else if (value === moduleState.button.released) {
+        if (moduleState.button.isPressed) {
+          moduleState.button.isPressed = false;
+          shouldUpdate = true;
+          logModuleState(moduleId, "button-release", { channel, cc, value });
+        }
+        moduleState.button.onclickActive = moduleState.button.onclickActive ? 0 : 1;
+        shouldUpdate = true;
+        logModuleState(moduleId, "button-onclick", {
+          onclickActive: moduleState.button.onclickActive,
+          channel,
+          cc,
+        });
       }
-      moduleState.button.onclickActive = moduleState.button.onclickActive ? 0 : 1;
-      applyIncomingState(moduleId);
-      logModuleState(moduleId, "button-onclick", {
-        onclickActive: moduleState.button.onclickActive,
-        channel,
-        cc,
-      });
+      if (shouldUpdate) {
+        applyIncomingState(moduleId);
+      }
     });
     return;
   }
