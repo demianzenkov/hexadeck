@@ -103,12 +103,3 @@ Device can be update through DFU mode. To put device into DFU mode use MIDI Syse
 ```bash
 ./scripts/firmware_updater/update.bat -D hexadeck_fw_v0.bin
 ```
-
-#### TODO
-
-- Steps parameter handling
-- Configuration saving & loading on device, several banks
-- Readme
-  - Supported MIDI commands description
-  - SysEx configuration
-- Migrate project to Makefile build system
