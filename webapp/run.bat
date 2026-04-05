@@ -1,19 +1,13 @@
 @echo off
 cd /d "%~dp0"
 
-where python3 >nul 2>&1
-if %errorlevel%==0 (
-    set PY=python3
-    goto start
-)
+py --version >nul 2>&1 && set PY=py&& goto start
+python --version >nul 2>&1 && set PY=python&& goto start
+python3 --version >nul 2>&1 && set PY=python3&& goto start
 
-where python >nul 2>&1
-if %errorlevel%==0 (
-    set PY=python
-    goto start
-)
-
-echo Python not found. Please install Python 3.
+echo Python not found. Please install Python 3 and ensure it is in your PATH.
+echo You may also need to disable the Windows Store alias for Python:
+echo   Settings ^> Apps ^> Advanced app settings ^> App execution aliases
 pause
 exit /b 1
 
