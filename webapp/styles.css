@@ -80,6 +80,7 @@ h1 {
   gap: 10px;
 }
 
+
 button,
 select,
 input {
@@ -560,4 +561,29 @@ body:not(.connected) .lock-overlay {
   .form-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Presets panel */
+
+.panel-presets .panel-header {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.preset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.panel-presets select {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 0.85rem;
 }

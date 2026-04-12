@@ -35,6 +35,8 @@ private:
 public:
 	int saveModulePreset(uint8_t preset_bank, module_state_t * preset);
 	int loadModulePreset(uint8_t preset_bank, module_state_t * preset);
+	bool isInitialized();
+	void writeInitMarker();
 };
 
 #ifdef __cplusplus

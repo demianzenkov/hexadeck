@@ -37,6 +37,8 @@ const MIDI_SYS_SET_SIMPLE_SCREEN = 35;
 const MIDI_SYS_GET_SIMPLE_SCREEN = 36;
 const MIDI_SYS_SET_BUTTON_ONCLICK_ACTIVE = 37;
 const MIDI_SYS_GET_BUTTON_ONCLICK_ACTIVE = 38;
+const MIDI_SYS_PRESET_SAVE = 39;
+const MIDI_SYS_PRESET_LOAD = 40;
 
 const BUTTON_ONCLICK_STEP = 0;
 const BUTTON_MIDI_ENABLED = 0;
@@ -65,8 +67,6 @@ const SYNC_COOLDOWN_MS = 1200;
 
 const grid = document.getElementById("grid");
 const statusEl = document.getElementById("status");
-const outputSelect = document.getElementById("outputSelect");
-const inputSelect = document.getElementById("inputSelect");
 const connectButton = document.getElementById("connectButton");
 const demoButton = document.getElementById("demoButton");
 const fwButton = document.getElementById("fwButton");
@@ -150,8 +150,9 @@ function setConnected(connected, statusText) {
   state.connected = connected;
   document.body.classList.toggle("connected", connected);
   connectButton.classList.toggle("connected", connected);
-  connectButton.textContent = connected ? "Connected" : "Connect MIDI";
+  connectButton.textContent = connected ? "Disconnect" : "Connect MIDI";
   connectButton.disabled = state.demoMode;
+  demoButton.classList.toggle("hidden", connected && !state.demoMode);
   if (statusText) {
     setStatus(statusText, connected);
   }
@@ -670,6 +671,10 @@ function eventName(eventType) {
       return "GET_BUTTON_ACTIVE";
     case MIDI_SYS_GET_SIMPLE_SCREEN:
       return "GET_SIMPLE_SCREEN";
+    case MIDI_SYS_PRESET_SAVE:
+      return "PRESET_SAVE";
+    case MIDI_SYS_PRESET_LOAD:
+      return "PRESET_LOAD";
     default:
       return `EVENT_${eventType}`;
   }
@@ -1053,19 +1058,47 @@ function disconnectMIDI() {
     state.input.onmidimessage = null;
   }
   state.input = null;
-  outputSelect.innerHTML = "";
-  inputSelect.innerHTML = "";
-  const option = document.createElement("option");
-  option.value = "";
-  option.textContent = "Connect to scan devices";
-  option.disabled = true;
-  option.selected = true;
-  outputSelect.appendChild(option);
-  const inputOption = option.cloneNode(true);
-  inputSelect.appendChild(inputOption);
-  outputSelect.disabled = true;
-  inputSelect.disabled = true;
   setConnected(false, "Disconnected");
+}
+
+let autoConnectTimer = null;
+
+async function autoConnectMIDI() {
+  if (!navigator.requestMIDIAccess) {
+    setStatus("WebMIDI not supported", false);
+    return;
+  }
+  try {
+    setStatus("Waiting for device...", false);
+    state.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+    state.midiAccess.onstatechange = () => {
+      console.info("[MIDI] Device state change detected.");
+      if (!state.demoMode) {
+        populateOutputs();
+        populateInputs();
+      }
+    };
+    populateOutputs();
+    populateInputs();
+    if (!state.output) {
+      autoConnectTimer = setInterval(() => {
+        if (state.demoMode || state.connected) {
+          clearInterval(autoConnectTimer);
+          autoConnectTimer = null;
+          return;
+        }
+        populateOutputs();
+        populateInputs();
+        if (state.output) {
+          clearInterval(autoConnectTimer);
+          autoConnectTimer = null;
+        }
+      }, 2000);
+    }
+  } catch (error) {
+    setStatus("SysEx permission denied", false);
+    console.error("[MIDI] Access denied.", error);
+  }
 }
 
 function setDemoMode(enabled) {
@@ -1074,8 +1107,6 @@ function setDemoMode(enabled) {
   demoButton.classList.toggle("connected", enabled);
   syncButton.disabled = enabled;
   fwButton.disabled = enabled;
-  outputSelect.disabled = true;
-  inputSelect.disabled = true;
   if (enabled) {
     if (state.input) {
       state.input.onmidimessage = null;
@@ -1089,49 +1120,25 @@ function setDemoMode(enabled) {
 }
 
 function populateOutputs() {
-  outputSelect.innerHTML = "";
   const outputs = [...state.midiAccess.outputs.values()].filter((output) => isTargetOutput(output));
   console.info("[MIDI] Outputs:", outputs.map((output) => output.name || output.id));
-  outputs.forEach((output) => {
-    const option = document.createElement("option");
-    option.value = output.id;
-    option.textContent = output.name || output.id;
-    outputSelect.appendChild(option);
-  });
   state.output = outputs[0] || null;
   if (state.output) {
     const outputChanged = state.output.id !== state.lastOutputId;
     state.lastOutputId = state.output.id;
-    outputSelect.disabled = false;
-    outputSelect.value = state.output.id;
     setConnected(true, `Connected to ${state.output.name || TARGET_DEVICE_NAME}`);
-    outputSelect.focus();
     console.info("[MIDI] Output selected:", state.output.name || state.output.id);
     if (outputChanged && state.input) {
       requestAllState("output-ready");
     }
   } else {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "No Hexadeck Controller found";
-    option.disabled = true;
-    option.selected = true;
-    outputSelect.appendChild(option);
-    outputSelect.disabled = true;
     setConnected(false, "Hexadeck Controller not found");
   }
 }
 
 function populateInputs() {
-  inputSelect.innerHTML = "";
   const inputs = [...state.midiAccess.inputs.values()].filter((input) => isTargetOutput(input));
   console.info("[MIDI] Inputs:", inputs.map((input) => input.name || input.id));
-  inputs.forEach((input) => {
-    const option = document.createElement("option");
-    option.value = input.id;
-    option.textContent = input.name || input.id;
-    inputSelect.appendChild(option);
-  });
   if (state.input) {
     state.input.onmidimessage = null;
   }
@@ -1139,21 +1146,11 @@ function populateInputs() {
   if (state.input) {
     const inputChanged = state.input.id !== state.lastInputId;
     state.lastInputId = state.input.id;
-    inputSelect.disabled = false;
-    inputSelect.value = state.input.id;
     state.input.onmidimessage = handleMIDIMessage;
     console.info("[MIDI] Input selected:", state.input.name || state.input.id);
     if (state.output && (inputChanged || state.lastSyncAt === 0)) {
       requestAllState("input-ready");
     }
-  } else {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "No Hexadeck Controller input";
-    option.disabled = true;
-    option.selected = true;
-    inputSelect.appendChild(option);
-    inputSelect.disabled = true;
   }
 }
 
@@ -1166,39 +1163,12 @@ connectButton.addEventListener("click", () => {
     disconnectMIDI();
     return;
   }
-  connectMIDI();
+  autoConnectMIDI();
 });
 demoButton.addEventListener("click", () => {
   setDemoMode(!state.demoMode);
 });
-outputSelect.addEventListener("change", (event) => {
-  if (!state.midiAccess) {
-    return;
-  }
-  const outputs = [...state.midiAccess.outputs.values()].filter((output) => isTargetOutput(output));
-  state.output = outputs.find((out) => out.id === event.target.value) || null;
-  if (state.output) {
-    setConnected(true, `Connected to ${state.output.name || TARGET_DEVICE_NAME}`);
-    requestAllState("output-change");
-  }
-});
 
-inputSelect.addEventListener("change", (event) => {
-  if (!state.midiAccess) {
-    return;
-  }
-  const inputs = [...state.midiAccess.inputs.values()].filter((input) => isTargetOutput(input));
-  if (state.input) {
-    state.input.onmidimessage = null;
-  }
-  state.input = inputs.find((input) => input.id === event.target.value) || null;
-  if (state.input) {
-    state.input.onmidimessage = handleMIDIMessage;
-    if (state.output) {
-      requestAllState("input-change");
-    }
-  }
-});
 
 fwButton.addEventListener("click", () => {
   if (state.demoMode) {
@@ -1346,6 +1316,177 @@ syncButton.addEventListener("click", () => {
   requestAllState("manual");
 });
 
+// Preset buttons
+
+const presetSelect = document.getElementById("presetSelect");
+
+function sendPresetSave(presetIndex) {
+  if (!ensureOutput({ requireSelection: false })) {
+    return;
+  }
+  sendSysEx([MIDI_SYS_PRESET_SAVE, presetIndex], { requireSelection: false });
+  console.info(`[MIDI] Preset ${presetIndex + 1} saved`);
+}
+
+function sendPresetLoad(presetIndex) {
+  if (!ensureOutput({ requireSelection: false })) {
+    return;
+  }
+  sendSysEx([MIDI_SYS_PRESET_LOAD, presetIndex], { requireSelection: false });
+  console.info(`[MIDI] Preset ${presetIndex + 1} load requested`);
+  setTimeout(() => requestAllState("preset-load"), 800);
+}
+
+document.getElementById("presetSave").addEventListener("click", () => {
+  sendPresetSave(Number(presetSelect.value));
+});
+document.getElementById("presetLoad").addEventListener("click", () => {
+  sendPresetLoad(Number(presetSelect.value));
+});
+
+// JSON Export / Import
+
+function exportConfigJSON() {
+  const config = {
+    version: 1,
+    modules: state.modules.map((m) => ({
+      id: m.id,
+      name: m.name,
+      value: m.value,
+      channel: m.channel,
+      cc: m.cc,
+      min: m.min,
+      max: m.max,
+      step: m.step,
+      simple: m.simple,
+      colors: { ...m.colors },
+      button: {
+        channel: m.button.channel,
+        cc: m.button.cc,
+        pressed: m.button.pressed,
+        released: m.button.released,
+        step: m.button.step,
+        onclickMode: m.button.onclickMode,
+        onclickActive: m.button.onclickActive,
+      },
+    })),
+  };
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `8dof-preset-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importConfigJSON(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const config = JSON.parse(e.target.result);
+      if (!config.modules || !Array.isArray(config.modules)) {
+        alert("Invalid config file: missing modules array.");
+        return;
+      }
+      applyImportedConfig(config);
+      sendAllModulesToDevice();
+    } catch (err) {
+      alert("Failed to parse JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applyImportedConfig(config) {
+  for (const imported of config.modules) {
+    const id = imported.id;
+    if (id === undefined || id < 0 || id > 15) continue;
+    const m = state.modules[id];
+    if (!m) continue;
+
+    if (imported.name !== undefined) m.name = imported.name;
+    if (imported.value !== undefined) m.value = imported.value;
+    if (imported.channel !== undefined) m.channel = imported.channel;
+    if (imported.cc !== undefined) m.cc = imported.cc;
+    if (imported.min !== undefined) m.min = imported.min;
+    if (imported.max !== undefined) m.max = imported.max;
+    if (imported.step !== undefined) m.step = imported.step;
+    if (imported.simple !== undefined) m.simple = imported.simple;
+    if (imported.colors) {
+      if (imported.colors.bg) m.colors.bg = imported.colors.bg;
+      if (imported.colors.border) m.colors.border = imported.colors.border;
+      if (imported.colors.text) m.colors.text = imported.colors.text;
+      if (imported.colors.bar) m.colors.bar = imported.colors.bar;
+    }
+    if (imported.button) {
+      if (imported.button.channel !== undefined) m.button.channel = imported.button.channel;
+      if (imported.button.cc !== undefined) m.button.cc = imported.button.cc;
+      if (imported.button.pressed !== undefined) m.button.pressed = imported.button.pressed;
+      if (imported.button.released !== undefined) m.button.released = imported.button.released;
+      if (imported.button.step !== undefined) m.button.step = imported.button.step;
+      if (imported.button.onclickMode !== undefined) m.button.onclickMode = imported.button.onclickMode;
+      if (imported.button.onclickActive !== undefined) m.button.onclickActive = imported.button.onclickActive;
+    }
+    updateModuleUI(id);
+  }
+  if (state.selectedId !== null) {
+    applyModuleToForms(state.selectedId);
+  }
+}
+
+function sendAllModulesToDevice() {
+  if (!ensureOutput({ requireSelection: false })) {
+    return;
+  }
+  let delay = 0;
+  const gap = 20;
+  for (let id = 0; id < 16; id += 1) {
+    const m = state.modules[id];
+    if (!m) continue;
+    const cmds = [
+      () => {
+        const bytes = Array.from(m.name).map((c) => c.charCodeAt(0));
+        bytes.push(0x00);
+        sendSysEx([MIDI_SYS_SET_NAME, id, ...bytes], { requireSelection: false });
+      },
+      () => sendSysEx([MIDI_SYS_SET_VALUE, id, clamp(m.value, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_CHANNEL, id, clamp(m.channel, 0, 15)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_CC, id, clamp(m.cc, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_RANGE_MIN, id, clamp(m.min, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_RANGE_MAX, id, clamp(m.max, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_STEP, id, clamp(m.step, 1, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_SIMPLE_SCREEN, id, m.simple ? 1 : 0], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_COLOR_BG, id, ...encodeColor(m.colors.bg)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_COLOR_BORDER, id, ...encodeColor(m.colors.border)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_COLOR_TEXT, id, ...encodeColor(m.colors.text)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_COLOR_BAR, id, ...encodeColor(m.colors.bar)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_BUTTON_MIDI_CHANNEL, id, clamp(m.button.channel, 0, 15)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_BUTTON_MIDI_CC, id, clamp(m.button.cc, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_BUTTON_MIDI_PRESSED_VALUE, id, clamp(m.button.pressed, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_BUTTON_MIDI_RELEASED_VALUE, id, clamp(m.button.released, 0, 127)], { requireSelection: false }),
+      () => sendSysEx([MIDI_SYS_SET_BUTTON_ONCLICK_STEP, id, clamp(m.button.step, 1, 127)], { requireSelection: false }),
+    ];
+    for (const cmd of cmds) {
+      setTimeout(cmd, delay);
+      delay += gap;
+    }
+  }
+}
+
+document.getElementById("exportJSON").addEventListener("click", exportConfigJSON);
+document.getElementById("importJSON").addEventListener("click", () => {
+  document.getElementById("importJSONFile").click();
+});
+document.getElementById("importJSONFile").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    importConfigJSON(file);
+    e.target.value = "";
+  }
+});
+
 buildGrid();
 setConnected(false, "Disconnected");
 updatePanelSelectionState();
+autoConnectMIDI();

@@ -245,8 +245,9 @@ void TaskOS::processMenuButton()
 					}
 					preset_edit_active = false;
 					ui_p->lvgl_activatePresetSelector(false);
-					ui_p->lvgl_loadScreen(0, getMainScreenForDisplay(0));
 					for (uint8_t i = 0; i < 16; i++) {
+						ui_p->setSimpleMode(i, module_states[i].simple_screen_enabled != 0);
+						ui_p->lvgl_loadScreen(i, getMainScreenForDisplay(i));
 						ui_p->refreshDisplayState(i, &module_states[i]);
 						vTaskDelay(50);
 					}
@@ -793,18 +794,28 @@ void TaskOS::task(void const *arg)
 	midi_sysex_event_t sysex_input_ev;
 	button_event_t button_ev;
 
-	/* Load UI states from flash memory */
-	// if(p_this->nvs.loadModulePreset(0, p_this->module_states) != 0) {
-	// 	p_this->nvs.saveModulePreset(0, p_this->module_states);
-	// 	if(p_this->nvs.loadModulePreset(0, p_this->module_states) != 0) {
-	// 		while(1) {
-	// 			vTaskDelay(50);
-	// 		}
-	// 	}
-	// }
+	/* Initialize flash presets if first boot */
+	if(!p_this->nvs.isInitialized()) {
+		for(uint8_t bank = 0; bank < 4; bank++) {
+			p_this->nvs.saveModulePreset(bank, p_this->module_states);
+		}
+		p_this->nvs.writeInitMarker();
+	}
+
+	/* Load preset 0 from flash */
+	if(p_this->nvs.loadModulePreset(0, p_this->module_states) == 0) {
+		for(int i = 0; i < 16; i++) {
+			p_this->ui_p->setSimpleMode(i, p_this->module_states[i].simple_screen_enabled != 0);
+		}
+		p_this->current_screen = p_this->getMainScreenForDisplay(0);
+	}
+
+	/* Wait for LVGL UI to be fully initialized */
+	p_this->ui_p->waitUntilReady();
 
 	/* Set UI for modules states */
 	for(int i = 0; i < 16; i++) {
+		p_this->ui_p->lvgl_loadScreen(i, p_this->getMainScreenForDisplay(i));
 		p_this->ui_p->refreshDisplayState(i, &p_this->module_states[i]);
 		vTaskDelay(30);
 	}
@@ -1233,6 +1244,30 @@ void TaskOS::task(void const *arg)
 				}
 				case MIDI_SYS_FIRMWARE_UPDATE: {
 					JumpToBootloader();
+					break;
+				}
+				case MIDI_SYS_PRESET_SAVE: {
+					uint8_t preset_idx = sysex_input_ev.buffer[1];
+					if(preset_idx < 4) {
+						p_this->nvs.saveModulePreset(preset_idx, p_this->module_states);
+					}
+					break;
+				}
+				case MIDI_SYS_PRESET_LOAD: {
+					uint8_t preset_idx = sysex_input_ev.buffer[1];
+					if(preset_idx < 4) {
+						if(p_this->nvs.loadModulePreset(preset_idx, p_this->module_states) == 0) {
+							for(uint8_t i = 0; i < 16; i++) {
+								p_this->ui_p->setSimpleMode(i, p_this->module_states[i].simple_screen_enabled != 0);
+								p_this->ui_p->lvgl_loadScreen(i, p_this->getMainScreenForDisplay(i));
+								p_this->ui_p->refreshDisplayState(i, &p_this->module_states[i]);
+								vTaskDelay(30);
+							}
+							if(p_this->current_screen == SCREEN_ID_MAIN || p_this->current_screen == SCREEN_ID_MAIN_SIMPLE) {
+								p_this->current_screen = p_this->getMainScreenForDisplay(0);
+							}
+						}
+					}
 					break;
 				}
 				case MIDI_SYS_GET_NAME:

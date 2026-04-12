@@ -62,6 +62,7 @@ void UI::createTask()
 {
 	lvgl_ready_sem = xSemaphoreCreateBinary();
 	ui_busy_mutex = xSemaphoreCreateMutex();
+	ui_init_done_sem = xSemaphoreCreateBinary();
 	xSemaphoreGive(ui_busy_mutex);
 	xSemaphoreTake(lvgl_ready_sem, 0);
 
@@ -92,6 +93,8 @@ void UI::taskUI(void const *arg)
 	ui_init();
 	loadScreen(p_this->isSimpleMode(0) ? SCREEN_ID_MAIN_SIMPLE : SCREEN_ID_MAIN);
 	xSemaphoreGive(p_this->ui_busy_mutex);
+
+	xSemaphoreGive(p_this->ui_init_done_sem);
 
 	
 	for (;;)
@@ -584,6 +587,11 @@ bool UI::isSimpleMode(uint8_t display_id) const
 		return false;
 	}
 	return simple_mode[display_id];
+}
+
+void UI::waitUntilReady()
+{
+	xSemaphoreTake(ui_init_done_sem, portMAX_DELAY);
 }
 
 

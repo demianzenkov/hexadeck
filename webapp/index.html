@@ -24,8 +24,6 @@
           <div class="midi-row">
             <button id="demoButton" class="ghost">Run Demo</button>
             <button id="connectButton" class="connect-button">Connect MIDI</button>
-            <select id="outputSelect" aria-label="MIDI output" disabled></select>
-            <select id="inputSelect" aria-label="MIDI input" disabled></select>
           </div>
           <div class="midi-row">
             <span id="status" class="status idle">Disconnected</span>
@@ -183,6 +181,35 @@
             <div class="note">Button SysEx controls are now active.</div>
           </section>
         </div>
+        </section>
+
+        <section class="panel panel-presets">
+          <div class="panel-header">
+            <div>
+              <h2>Presets</h2>
+              <p>Save &amp; load device presets, or export/import as JSON.</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <label for="presetSelect">Preset</label>
+              <select id="presetSelect">
+                <option value="0">Preset 1</option>
+                <option value="1">Preset 2</option>
+                <option value="2">Preset 3</option>
+                <option value="3">Preset 4</option>
+              </select>
+            </div>
+            <div class="preset-actions">
+              <button id="presetSave" class="ghost">Save to Device</button>
+              <button id="presetLoad" class="ghost">Load from Device</button>
+            </div>
+            <div class="preset-actions">
+              <button id="exportJSON" class="ghost">Export JSON</button>
+              <button id="importJSON" class="ghost">Import JSON</button>
+              <input id="importJSONFile" type="file" accept=".json,application/json" hidden />
+            </div>
+          </div>
         </section>
       </aside>
 

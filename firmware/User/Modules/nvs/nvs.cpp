@@ -21,6 +21,10 @@
 // Store all banks in the last sector (sector 7)
 #define MIDI_PRESETS_BASE_ADDR    (ADDR_FLASH_SECTOR_7)
 
+// Magic marker stored after the last preset bank to detect first boot
+#define NVS_MAGIC_VALUE           ((uint32_t)0x8D0FC0DE)
+#define NVS_MAGIC_ADDR            (MIDI_PRESETS_BASE_ADDR + MIDI_PRESETS_TOTAL_SIZE)
+
 
 
 void NVS::read(nvs_key_e sector, void * out_data, size_t data_size)
@@ -111,16 +115,21 @@ int NVS::saveModulePreset(uint8_t preset_bank, module_state_t *preset)
 		return -3;
 	}
 
-	// Write back the whole sector from RAM
-	for (size_t i = 0; i < MIDI_PRESETS_TOTAL_SIZE; i += 4) {
+	// Write back the whole sector from RAM (presets + magic marker)
+	size_t total_write = MIDI_PRESETS_TOTAL_SIZE + 4; // +4 for magic marker
+	for (size_t i = 0; i < total_write; i += 4) {
 		uint32_t word = 0xFFFFFFFFU;
-		size_t remain = MIDI_PRESETS_TOTAL_SIZE - i;
-		if (remain >= 4) {
-			word = *(uint32_t *)(&sector_buffer[i]);
-		} else {
-			for (size_t j = 0; j < remain; ++j) {
-				((uint8_t *)&word)[j] = sector_buffer[i + j];
+		if (i < MIDI_PRESETS_TOTAL_SIZE) {
+			size_t remain = MIDI_PRESETS_TOTAL_SIZE - i;
+			if (remain >= 4) {
+				word = *(uint32_t *)(&sector_buffer[i]);
+			} else {
+				for (size_t j = 0; j < remain; ++j) {
+					((uint8_t *)&word)[j] = sector_buffer[i + j];
+				}
 			}
+		} else {
+			word = NVS_MAGIC_VALUE;
 		}
 		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, MIDI_PRESETS_BASE_ADDR + i, word) != HAL_OK) {
 			HAL_FLASH_Lock();
@@ -151,6 +160,27 @@ int NVS::loadModulePreset(uint8_t preset_bank, module_state_t * preset)
 	uint8_t *dst = (uint8_t *)preset;
 	for (size_t i = 0; i < MIDI_PRESET_SIZE; ++i) {
 		dst[i] = *(volatile uint8_t *)(address + i);
+	}
+	// Validate and sanitize loaded data
+	for (uint8_t i = 0; i < 16; i++) {
+		preset[i].display_id = i;
+		if (preset[i].channel > 15) preset[i].channel = 0;
+		if (preset[i].cc > 127) preset[i].cc = 0;
+		if (preset[i].max_value > 127) preset[i].max_value = 127;
+		if (preset[i].min_value > preset[i].max_value) preset[i].min_value = 0;
+		if (preset[i].value < preset[i].min_value) preset[i].value = preset[i].min_value;
+		if (preset[i].value > preset[i].max_value) preset[i].value = preset[i].max_value;
+		if (preset[i].step < 1) preset[i].step = 1;
+		if (preset[i].step > preset[i].max_value) preset[i].step = 1;
+		if (preset[i].button_midi_channel > 15) preset[i].button_midi_channel = 0;
+		if (preset[i].button_midi_cc > 127) preset[i].button_midi_cc = 0;
+		if (preset[i].button_midi_pressed_value > 127) preset[i].button_midi_pressed_value = 127;
+		if (preset[i].button_midi_released_value > 127) preset[i].button_midi_released_value = 0;
+		if (preset[i].button_onclick_step < 1) preset[i].button_onclick_step = 1;
+		if (preset[i].simple_screen_enabled > 1) preset[i].simple_screen_enabled = 1;
+		if (preset[i].button_midi_enabled > 1) preset[i].button_midi_enabled = 0;
+		if (preset[i].button_onclick_mode > 1) preset[i].button_onclick_mode = 0;
+		if (preset[i].button_onclick_active > 1) preset[i].button_onclick_active = 0;
 	}
 	return 0;
 }
@@ -225,4 +255,56 @@ uint32_t NVS::getPresetAddress(uint8_t preset_bank) {
 // Helper: Get sector number for a given address (for erase)
 uint32_t NVS::getSectorNumber(uint32_t address) {
 		return getSector(address);
+}
+
+
+bool NVS::isInitialized()
+{
+	uint32_t marker = *(volatile uint32_t *)NVS_MAGIC_ADDR;
+	return (marker == NVS_MAGIC_VALUE);
+}
+
+void NVS::writeInitMarker()
+{
+	// Read the entire sector into RAM
+	uint8_t sector_buffer[MIDI_PRESETS_TOTAL_SIZE + 4];
+	const uint8_t *flash_ptr = (const uint8_t *)MIDI_PRESETS_BASE_ADDR;
+	for (size_t i = 0; i < MIDI_PRESETS_TOTAL_SIZE; ++i) {
+		sector_buffer[i] = flash_ptr[i];
+	}
+	// Append magic marker
+	uint32_t magic = NVS_MAGIC_VALUE;
+	memcpy(&sector_buffer[MIDI_PRESETS_TOTAL_SIZE], &magic, 4);
+
+	uint32_t sector_num = getSectorNumber(MIDI_PRESETS_BASE_ADDR);
+	if (sector_num == 0xFFFFFFFFU) return;
+
+	HAL_FLASH_Unlock();
+	FLASH_EraseInitTypeDef eraseInitStruct;
+	uint32_t sectorError = 0;
+	eraseInitStruct.TypeErase = FLASH_TYPEERASE_SECTORS;
+	eraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+	eraseInitStruct.Sector = sector_num;
+	eraseInitStruct.NbSectors = 1;
+	if (HAL_FLASHEx_Erase(&eraseInitStruct, &sectorError) != HAL_OK) {
+		HAL_FLASH_Lock();
+		return;
+	}
+
+	size_t total = MIDI_PRESETS_TOTAL_SIZE + 4;
+	for (size_t i = 0; i < total; i += 4) {
+		uint32_t word = 0xFFFFFFFFU;
+		size_t remain = total - i;
+		if (remain >= 4) {
+			word = *(uint32_t *)(&sector_buffer[i]);
+		} else {
+			for (size_t j = 0; j < remain; ++j) {
+				((uint8_t *)&word)[j] = sector_buffer[i + j];
+			}
+		}
+		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, MIDI_PRESETS_BASE_ADDR + i, word) != HAL_OK) {
+			break;
+		}
+	}
+	HAL_FLASH_Lock();
 }
