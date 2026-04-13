@@ -30,7 +30,7 @@ if errorlevel 1 (
 )
 
 REM Parse arguments
-set BIN_DIR=scripts\firmware_updater\binaries
+set BIN_DIR=%~dp0binaries
 set BIN_FILE=
 set ADDRESS=0x08000000
 

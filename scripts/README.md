@@ -10,10 +10,10 @@ Flashes firmware binaries to the device over USB DFU.
 
 ```bash
 # macOS/Linux — auto-installs dependencies (libusb, pyusb, pyfu-usb)
-./scripts/firmware_updater/update_macos.sh -D hexadeck_fw_v0.bin
+./scripts/firmware_updater/update_macos.sh -D hexadeck.bin
 
 # Windows
-./scripts/firmware_updater/update_windows.bat -D hexadeck_fw_v0.bin
+scripts\firmware_updater\update_windows.bat -D hexadeck.bin
 ```
 
 Place firmware binaries in `firmware_updater/binaries/`. The device must be in DFU mode — trigger via serial command (`/fw/update`), MIDI SysEx, or the on-device menu.
