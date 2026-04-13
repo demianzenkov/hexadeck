@@ -62,7 +62,6 @@ void UI::createTask()
 {
 	lvgl_ready_sem = xSemaphoreCreateBinary();
 	ui_busy_mutex = xSemaphoreCreateMutex();
-	ui_init_done_sem = xSemaphoreCreateBinary();
 	xSemaphoreGive(ui_busy_mutex);
 	xSemaphoreTake(lvgl_ready_sem, 0);
 
@@ -93,8 +92,6 @@ void UI::taskUI(void const *arg)
 	ui_init();
 	loadScreen(p_this->isSimpleMode(0) ? SCREEN_ID_MAIN_SIMPLE : SCREEN_ID_MAIN);
 	xSemaphoreGive(p_this->ui_busy_mutex);
-
-	xSemaphoreGive(p_this->ui_init_done_sem);
 
 	
 	for (;;)
@@ -194,7 +191,6 @@ void UI::lvgl_setUiState(module_state_t * state)
 		return;
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
-	last_state_ptr[state->display_id] = state;
 	
 	bool use_simple = isSimpleMode(state->display_id);
 	bool force_update = (current_ui_state.display_id != state->display_id);
@@ -342,16 +338,6 @@ void UI::lvgl_setUiState(module_state_t * state)
 			lv_obj_set_style_text_color(objects.range_max_label, state->text_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
 	}
-	if(force_update || (current_ui_state.button_onclick_active != state->button_onclick_active) || (lv_color_eq(current_ui_state.text_color, state->text_color) == false)) {
-		current_ui_state.button_onclick_active = state->button_onclick_active;
-		lv_obj_t *panel = use_simple ? objects.general_panel_simple : objects.general_panel;
-		if(state->button_onclick_active) {
-			lv_obj_set_style_border_width(panel, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-			lv_obj_set_style_border_color(panel, state->border_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-		} else {
-			lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-		}
-	}
 	if(force_update || (lv_color_eq(current_ui_state.background_color, state->background_color) == false)) {
 		current_ui_state.background_color = state->background_color;
 		if(use_simple) {
@@ -360,7 +346,6 @@ void UI::lvgl_setUiState(module_state_t * state)
 			lv_obj_set_style_bg_color(objects.general_panel, state->background_color, LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
 	}
-	last_active_display_id = state->display_id;
 
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -370,10 +355,6 @@ void UI::lvgl_setValue(value_update_t value)
 {
 	if (value.id > 15)
 	{
-		return;
-	}
-	if(last_active_display_id != value.id && last_state_ptr[value.id] != nullptr) {
-		lvgl_setUiState(last_state_ptr[value.id]);
 		return;
 	}
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
@@ -392,7 +373,6 @@ void UI::lvgl_setValue(value_update_t value)
 		lv_bar_set_value(objects.level_bar, value.value, LV_ANIM_OFF);
 		lv_label_set_text(objects.level_label, value_str);
 	}
-	last_active_display_id = value.id;
 
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -511,9 +491,9 @@ void UI::lvgl_loadButtonSetupParameters(uint8_t button_index, const module_state
 		button_index + 1,
 		midi_str,
 		state->button_midi_channel + 1,
-		state->button_midi_cc,
-		state->button_midi_released_value,
-		state->button_midi_pressed_value,
+		state->button_cc,
+		state->button_default_value,
+		state->button_pressed_value,
 		onclick_str,
 		state->button_onclick_step
 	);
@@ -534,7 +514,7 @@ void UI::lvgl_selectSettings(uint8_t selected_index)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.screen_setup_roller;
+	lv_obj_t * roller = objects.knob_setup_roller;
 	lv_roller_set_selected(roller, selected_index, LV_ANIM_OFF);
 	xSemaphoreGive(ui_busy_mutex);
 }
@@ -543,7 +523,7 @@ void UI::lvgl_loadSettingsOptions(uint8_t screen_index, bool simple_screen_enabl
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.screen_setup_roller;
+	lv_obj_t * roller = objects.knob_setup_roller;
 	char screen_str[8] = {};
 	if(screen_index == 0xFF) {
 		strncpy(screen_str, "all", sizeof(screen_str));
@@ -565,7 +545,7 @@ void UI::lvgl_activateSettingsSelector(bool active)
 {
 	xSemaphoreTake(ui_busy_mutex, portMAX_DELAY);
 	display.set_active_display(0);
-	lv_obj_t * roller = objects.screen_setup_roller;
+	lv_obj_t * roller = objects.knob_setup_roller;
 	lv_obj_set_style_text_color(roller, lv_color_hex(0xff000000), LV_PART_SELECTED | LV_STATE_CHECKED);
 	lv_obj_set_style_border_width(roller, 2, LV_PART_SELECTED | LV_STATE_CHECKED);
 	lv_obj_set_style_bg_color(roller, lv_color_hex(0xffdedede), LV_PART_SELECTED | LV_STATE_CHECKED);
@@ -587,11 +567,6 @@ bool UI::isSimpleMode(uint8_t display_id) const
 		return false;
 	}
 	return simple_mode[display_id];
-}
-
-void UI::waitUntilReady()
-{
-	xSemaphoreTake(ui_init_done_sem, portMAX_DELAY);
 }
 
 

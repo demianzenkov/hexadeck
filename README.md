@@ -88,7 +88,7 @@ Place the firmware binary into `./scripts/firmware_updater/binaries/`.
 ### Windows
 
 ```bash
-./scripts/firmware_updater/update_windows.bat -D hexadeck_fw_v0.bin
+scripts\firmware_updater\update_windows.bat -D hexadeck.bin
 ```
 
 ### Web

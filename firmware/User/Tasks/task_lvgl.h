@@ -63,7 +63,6 @@ public:
 	void		lvgl_activateSettingsSelector(bool active);
 	void		setSimpleMode(uint8_t display_id, bool enabled);
 	bool		isSimpleMode(uint8_t display_id) const;
-	void		waitUntilReady();
 	
 private:
 	static void taskUI(void const *arg);
@@ -80,12 +79,9 @@ private:
 	osThreadId uiTaskHandle;
 	SemaphoreHandle_t lvgl_ready_sem;
 	SemaphoreHandle_t ui_busy_mutex;
-	SemaphoreHandle_t ui_init_done_sem;
 	QueueHandle_t ui_update_queue;
 	QueueHandle_t ui_value_queue;
 	module_state_t current_ui_state = {};
-	module_state_t *last_state_ptr[16] = {};
-	uint8_t last_active_display_id = 0xFF;
 	bool simple_mode[16] = {};
 	bool last_simple_mode[16] = {};
 };

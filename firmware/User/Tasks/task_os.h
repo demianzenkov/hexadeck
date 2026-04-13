@@ -112,8 +112,7 @@ private:
 	void setStateValue(uint8_t id, uint8_t value);
 	void setStateChannel(uint8_t id, uint8_t channel);
 	void setStateCC(uint8_t id, uint8_t cc);
-	void setStateRangeMin(uint8_t id, uint8_t min_level);
-	void setStateRangeMax(uint8_t id, uint8_t max_level);
+	void setStateRange(uint8_t id, uint8_t max_level);
 	void setStateColor(uint8_t id, color_element_e element, lv_color_t color);
 	void setStateName(uint8_t id, const char *str);
 	
