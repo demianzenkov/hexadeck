@@ -3,4 +3,4 @@
 	url = https://github.com/lvgl/lvgl.git
 [submodule "webapp/modules/webdfu"]
 	path = webapp/modules/webdfu
-	url = git@github.com:devanlai/webdfu.git
+	url = https://github.com/devanlai/webdfu.git
