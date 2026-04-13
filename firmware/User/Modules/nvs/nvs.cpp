@@ -18,8 +18,8 @@
 #define MIDI_PRESETS_COUNT        4
 #define MIDI_PRESET_SIZE         (sizeof(module_state_t) * 16) // 16 presets per bank
 #define MIDI_PRESETS_TOTAL_SIZE  (MIDI_PRESET_SIZE * MIDI_PRESETS_COUNT)
-// Store all banks in the last sector (sector 7)
-#define MIDI_PRESETS_BASE_ADDR    (ADDR_FLASH_SECTOR_7)
+// Store all banks in sector 3 (16KB, reserved for NVS between bootloader and firmware)
+#define MIDI_PRESETS_BASE_ADDR    (ADDR_FLASH_SECTOR_3)
 
 // Magic marker stored after the last preset bank to detect first boot
 #define NVS_MAGIC_VALUE           ((uint32_t)0x8D0FC0DE)

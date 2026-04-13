@@ -39,6 +39,20 @@ const MIDI_SYS_SET_BUTTON_ONCLICK_ACTIVE = 37;
 const MIDI_SYS_GET_BUTTON_ONCLICK_ACTIVE = 38;
 const MIDI_SYS_PRESET_SAVE = 39;
 const MIDI_SYS_PRESET_LOAD = 40;
+const MIDI_SYS_CUSTOM_BOOTLOADER = 41;
+
+// Bootloader protocol constants
+const BL_MANUFACTURER_ID = 0x7D;
+const BL_SYSEX_CATEGORY = 0x60;
+const BL_CMD_START_UPDATE = 0x01;
+const BL_CMD_FW_DATA = 0x02;
+const BL_CMD_FW_VERIFY = 0x03;
+const BL_CMD_REBOOT = 0x04;
+const BL_RSP_ACK = 0x10;
+const BL_STATUS_OK = 0x00;
+const BL_CHUNK_SIZE = 128;
+const BL_ACK_TIMEOUT_MS = 10000;
+const BL_ERASE_TIMEOUT_MS = 30000;
 
 const BUTTON_ONCLICK_STEP = 0;
 const BUTTON_MIDI_ENABLED = 0;
@@ -56,6 +70,7 @@ const state = {
   selectedTab: "display",
   connected: false,
   demoMode: false,
+  midiFwUpdating: false,
   modules: [],
   lastSyncAt: 0,
   logCache: {},
@@ -87,6 +102,12 @@ const dfuProgress = document.getElementById("dfuProgress");
 const dfuProgressBar = document.getElementById("dfuProgressBar");
 const dfuProgressValue = document.getElementById("dfuProgressValue");
 const dfuProgressStatus = document.getElementById("dfuProgressStatus");
+const midiFwButton = document.getElementById("midiFwButton");
+const midiFwFileInput = document.getElementById("midiFwFileInput");
+const midiFwProgress = document.getElementById("midiFwProgress");
+const midiFwProgressBar = document.getElementById("midiFwProgressBar");
+const midiFwProgressValue = document.getElementById("midiFwProgressValue");
+const midiFwProgressStatus = document.getElementById("midiFwProgressStatus");
 
 const nameInput = document.getElementById("nameInput");
 const bgColor = document.getElementById("bgColor");
@@ -178,6 +199,9 @@ function updatePanelSelectionState() {
 
 function isTargetOutput(output) {
   if (!output) {
+    return false;
+  }
+  if (output.state && output.state !== "connected") {
     return false;
   }
   const name = (output.name || "").toLowerCase();
@@ -305,6 +329,13 @@ function buildGrid() {
       const type = hit && hit.classList.contains("knob") ? "knob" : "display";
       selectModule(i, type);
     });
+    moduleEl.addEventListener("dblclick", (event) => {
+      const target = event.target;
+      const hit = target.closest(".knob");
+      if (hit) {
+        selectModule(i, "button");
+      }
+    });
 
     grid.appendChild(moduleEl);
 
@@ -318,6 +349,7 @@ function buildGrid() {
       screenMin,
       screenValue,
       screenMax,
+      screenBar,
       screenBarFill,
       knob,
     };
@@ -386,7 +418,7 @@ function applyModuleToForms(id) {
 
 function selectModule(id, type) {
   state.selectedId = id;
-  state.selectedTab = type === "knob" ? "knob" : "display";
+  state.selectedTab = type === "knob" ? "knob" : type === "button" ? "button" : "display";
   [...document.querySelectorAll(".module")].forEach((el) => {
     el.classList.toggle("selected", Number(el.dataset.moduleId) === id);
   });
@@ -1024,6 +1056,251 @@ async function startDfuUpdate(file) {
   }
 }
 
+// ── MIDI Firmware Update ────────────────────────────────────────────────────
+
+function encode7bit(data) {
+  const encoded = [];
+  let i = 0;
+  while (i < data.length) {
+    let msbFlags = 0;
+    const groupStart = encoded.length;
+    encoded.push(0); // placeholder
+    for (let j = 0; j < 7 && i < data.length; j++, i++) {
+      if (data[i] & 0x80) {
+        msbFlags |= (1 << j);
+      }
+      encoded.push(data[i] & 0x7f);
+    }
+    encoded[groupStart] = msbFlags;
+  }
+  return encoded;
+}
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c;
+  }
+  return table;
+})();
+
+function crc32(data) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < data.length; i++) {
+    crc = CRC32_TABLE[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function setMidiFwStatus(text, isError = false) {
+  if (!midiFwProgressStatus) return;
+  midiFwProgressStatus.textContent = text;
+  midiFwProgressStatus.classList.toggle("error", isError);
+}
+
+function setMidiFwProgressState(visible, value, total) {
+  if (!midiFwProgress || !midiFwProgressBar || !midiFwProgressValue) return;
+  midiFwProgress.classList.toggle("hidden", !visible);
+  if (!visible) return;
+  if (typeof total === "number" && Number.isFinite(total)) {
+    midiFwProgressBar.max = total;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    midiFwProgressBar.value = value;
+  }
+  if (typeof total === "number" && total > 0) {
+    const percent = Math.min(100, Math.round((midiFwProgressBar.value / total) * 100));
+    midiFwProgressValue.textContent = `${percent}%`;
+  } else {
+    midiFwProgressValue.textContent = "";
+  }
+}
+
+/* Bootloader ACK promise — resolved by handleMIDIMessage when a BL ACK arrives */
+let blAckResolve = null;
+
+function waitForBlAck(timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      blAckResolve = null;
+      reject(new Error("Timeout waiting for bootloader ACK"));
+    }, timeoutMs);
+    blAckResolve = (status) => {
+      clearTimeout(timer);
+      blAckResolve = null;
+      resolve(status);
+    };
+  });
+}
+
+function sendBlSysex(output, payload) {
+  const message = [0xF0, BL_MANUFACTURER_ID, ...payload, 0xF7];
+  output.send(message);
+}
+
+function waitForDevice(midiAccess, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      midiAccess.removeEventListener("statechange", onChange);
+      reject(new Error("Timeout waiting for device to re-enumerate"));
+    }, timeoutMs);
+
+    function tryFind() {
+      const outputs = [...midiAccess.outputs.values()].filter((o) => isTargetOutput(o));
+      const inputs = [...midiAccess.inputs.values()].filter((i) => isTargetOutput(i));
+      if (outputs[0] && inputs[0]) {
+        clearTimeout(timer);
+        midiAccess.removeEventListener("statechange", onChange);
+        resolve({ output: outputs[0], input: inputs[0] });
+      }
+    }
+
+    function onChange() {
+      tryFind();
+    }
+
+    midiAccess.addEventListener("statechange", onChange);
+    tryFind();
+  });
+}
+
+async function startMidiFwUpdate(file) {
+  const firmware = new Uint8Array(await file.arrayBuffer());
+  const fwSize = firmware.length;
+  const maxSize = 448 * 1024;
+
+  if (fwSize > maxSize) {
+    setMidiFwStatus(`Firmware too large: ${fwSize} bytes (max ${maxSize})`, true);
+    return;
+  }
+
+  const fwCrc = crc32(firmware);
+  const totalChunks = Math.ceil(fwSize / BL_CHUNK_SIZE);
+
+  console.info(`[MIDI-FW] Firmware: ${file.name}, ${fwSize} bytes, CRC32: 0x${fwCrc.toString(16).padStart(8, "0")}`);
+
+  setMidiFwProgressState(true, 0, fwSize);
+
+  // Step 0: Tell running firmware to enter bootloader
+  if (state.output && state.connected) {
+    state.midiFwUpdating = true;
+    setMidiFwStatus("Requesting bootloader mode...");
+    state.output.send([0xF0, MIDI_SYS_CUSTOM_BOOTLOADER, 0xF7]);
+    console.info("[MIDI-FW] Sent enter-bootloader command");
+  } else {
+    setMidiFwStatus("Device not connected.", true);
+    return;
+  }
+
+  // Wait for device to reboot and re-enumerate as bootloader
+  setMidiFwStatus("Waiting for bootloader to enumerate...");
+  let blOutput, blInput;
+  try {
+    // Wait a bit for the old device to fully disconnect first
+    await new Promise((r) => setTimeout(r, 1500));
+    const found = await waitForDevice(state.midiAccess, 8000);
+    blOutput = found.output;
+    blInput = found.input;
+    // Give the bootloader USB stack time to be fully ready
+    await new Promise((r) => setTimeout(r, 2000));
+  } catch (err) {
+    setMidiFwStatus("Bootloader device not found. " + err.message, true);
+    return;
+  }
+
+  // Set up ACK listener on bootloader input
+  blInput.onmidimessage = (event) => {
+    const data = Array.from(event.data || []);
+    if (data[0] !== 0xF0 || data[data.length - 1] !== 0xF7) return;
+    const payload = data.slice(1, -1);
+    // ACK: 7D 60 10 <status>
+    if (payload.length >= 4 &&
+        payload[0] === BL_MANUFACTURER_ID &&
+        payload[1] === BL_SYSEX_CATEGORY &&
+        payload[2] === BL_RSP_ACK) {
+      const status = payload[3];
+      if (blAckResolve) blAckResolve(status);
+    }
+  };
+
+  try {
+    // Step 1: Erase flash
+    setMidiFwStatus("Erasing flash...");
+    sendBlSysex(blOutput, [BL_SYSEX_CATEGORY, BL_CMD_START_UPDATE]);
+    const eraseStatus = await waitForBlAck(BL_ERASE_TIMEOUT_MS);
+    if (eraseStatus !== BL_STATUS_OK) {
+      throw new Error(`Flash erase failed (status: 0x${eraseStatus.toString(16)})`);
+    }
+    console.info("[MIDI-FW] Flash erased");
+
+    // Step 2: Send firmware chunks
+    setMidiFwStatus("Uploading firmware...");
+    for (let offset = 0; offset < fwSize; offset += BL_CHUNK_SIZE) {
+      const chunk = firmware.slice(offset, offset + BL_CHUNK_SIZE);
+      const addrBytes = [(offset >>> 24) & 0xFF, (offset >>> 16) & 0xFF, (offset >>> 8) & 0xFF, offset & 0xFF];
+      const addrEncoded = encode7bit(addrBytes);
+      const dataEncoded = encode7bit(Array.from(chunk));
+
+      const payload = [BL_SYSEX_CATEGORY, BL_CMD_FW_DATA, ...addrEncoded, ...dataEncoded];
+      sendBlSysex(blOutput, payload);
+
+      const chunkStatus = await waitForBlAck(BL_ACK_TIMEOUT_MS);
+      if (chunkStatus !== BL_STATUS_OK) {
+        throw new Error(`Chunk write failed at offset 0x${offset.toString(16)} (status: 0x${chunkStatus.toString(16)})`);
+      }
+
+      const sent = Math.min(offset + BL_CHUNK_SIZE, fwSize);
+      setMidiFwProgressState(true, sent, fwSize);
+      const chunkNum = Math.floor(offset / BL_CHUNK_SIZE) + 1;
+      setMidiFwStatus(`Uploading firmware... ${chunkNum}/${totalChunks}`);
+    }
+    console.info("[MIDI-FW] All chunks sent");
+
+    // Step 3: Verify
+    setMidiFwStatus("Verifying firmware...");
+    const sizeBytes = [(fwSize >>> 24) & 0xFF, (fwSize >>> 16) & 0xFF, (fwSize >>> 8) & 0xFF, fwSize & 0xFF];
+    const crcBytes = [(fwCrc >>> 24) & 0xFF, (fwCrc >>> 16) & 0xFF, (fwCrc >>> 8) & 0xFF, fwCrc & 0xFF];
+    const sizeEncoded = encode7bit(sizeBytes);
+    const crcEncoded = encode7bit(crcBytes);
+    sendBlSysex(blOutput, [BL_SYSEX_CATEGORY, BL_CMD_FW_VERIFY, ...sizeEncoded, ...crcEncoded]);
+
+    const verifyStatus = await waitForBlAck(BL_ACK_TIMEOUT_MS);
+    if (verifyStatus !== BL_STATUS_OK) {
+      throw new Error(`Verification failed (status: 0x${verifyStatus.toString(16)})`);
+    }
+    console.info("[MIDI-FW] Verification passed");
+
+    // Step 4: Reboot
+    setMidiFwStatus("Rebooting into new firmware...");
+    sendBlSysex(blOutput, [BL_SYSEX_CATEGORY, BL_CMD_REBOOT]);
+    try {
+      await waitForBlAck(2000);
+    } catch (_) {
+      // Device may reboot before ACK
+    }
+
+    setMidiFwProgressState(true, fwSize, fwSize);
+    setMidiFwStatus("Update complete! Device is rebooting.");
+    console.info("[MIDI-FW] Firmware update complete");
+
+  } catch (err) {
+    setMidiFwStatus(`Update failed: ${err.message}`, true);
+    console.error("[MIDI-FW] Update failed:", err);
+  } finally {
+    blInput.onmidimessage = null;
+    state.midiFwUpdating = false;
+    // Re-establish normal MIDI connection after a delay
+    setTimeout(() => {
+      populateOutputs();
+      populateInputs();
+    }, 3000);
+  }
+}
+
 async function connectMIDI() {
   if (state.demoMode) {
     setStatus("Disable demo mode to connect MIDI", false);
@@ -1043,8 +1320,10 @@ async function connectMIDI() {
     populateInputs();
     state.midiAccess.onstatechange = () => {
       console.info("[MIDI] Device state change detected.");
-      populateOutputs();
-      populateInputs();
+      if (!state.midiFwUpdating) {
+        populateOutputs();
+        populateInputs();
+      }
     };
   } catch (error) {
     setStatus("SysEx permission denied", false);
@@ -1073,7 +1352,7 @@ async function autoConnectMIDI() {
     state.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
     state.midiAccess.onstatechange = () => {
       console.info("[MIDI] Device state change detected.");
-      if (!state.demoMode) {
+      if (!state.demoMode && !state.midiFwUpdating) {
         populateOutputs();
         populateInputs();
       }
@@ -1107,6 +1386,7 @@ function setDemoMode(enabled) {
   demoButton.classList.toggle("connected", enabled);
   syncButton.disabled = enabled;
   fwButton.disabled = enabled;
+  midiFwButton.disabled = enabled;
   if (enabled) {
     if (state.input) {
       state.input.onmidimessage = null;
@@ -1129,7 +1409,7 @@ function populateOutputs() {
     setConnected(true, `Connected to ${state.output.name || TARGET_DEVICE_NAME}`);
     console.info("[MIDI] Output selected:", state.output.name || state.output.id);
     if (outputChanged && state.input) {
-      requestAllState("output-ready");
+      setTimeout(() => requestAllState("output-ready"), 1500);
     }
   } else {
     setConnected(false, "Hexadeck Controller not found");
@@ -1149,7 +1429,7 @@ function populateInputs() {
     state.input.onmidimessage = handleMIDIMessage;
     console.info("[MIDI] Input selected:", state.input.name || state.input.id);
     if (state.output && (inputChanged || state.lastSyncAt === 0)) {
-      requestAllState("input-ready");
+      setTimeout(() => requestAllState("input-ready"), 1500);
     }
   }
 }
@@ -1181,6 +1461,34 @@ fwButton.addEventListener("click", () => {
   }
   dfuFileInput.click();
 });
+
+midiFwButton.addEventListener("click", () => {
+  if (state.demoMode) {
+    setStatus("Demo mode: MIDI disabled", false);
+    return;
+  }
+  if (!midiFwFileInput) {
+    setMidiFwStatus("Firmware picker unavailable.", true);
+    return;
+  }
+  midiFwFileInput.click();
+});
+
+if (midiFwFileInput) {
+  midiFwFileInput.addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    setMidiFwProgressState(true, 0, file.size);
+    setMidiFwStatus(`Selected ${file.name}. Starting MIDI update...`);
+    try {
+      await startMidiFwUpdate(file);
+    } catch (error) {
+      setMidiFwStatus(`MIDI update failed: ${error}`, true);
+    } finally {
+      midiFwFileInput.value = "";
+    }
+  });
+}
 
 if (dfuFileInput) {
   dfuFileInput.addEventListener("change", async (event) => {
@@ -1486,7 +1794,61 @@ document.getElementById("importJSONFile").addEventListener("change", (e) => {
   }
 });
 
+// ── Bar click/drag interaction ──────────────────────────────────────────────
+
+function setupBarInteraction() {
+  let dragModuleId = null;
+
+  function valueFromBarEvent(moduleId, event) {
+    const els = moduleEls[moduleId];
+    if (!els || !els.screenBar) return null;
+    const rect = els.screenBar.getBoundingClientRect();
+    const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+    const ratio = x / rect.width;
+    const m = state.modules[moduleId];
+    if (!m) return null;
+    return Math.round(m.min + ratio * (m.max - m.min));
+  }
+
+  function applyBarValue(moduleId, newValue) {
+    const m = state.modules[moduleId];
+    if (!m) return;
+    const clamped = clamp(newValue, m.min, m.max);
+    if (m.value === clamped) return;
+    m.value = clamped;
+    updateModuleUI(moduleId);
+    if (state.selectedId === moduleId) {
+      applyModuleToForms(moduleId);
+    }
+    sendSysEx([MIDI_SYS_SET_VALUE, moduleId, clamped], { requireSelection: false });
+  }
+
+  for (let i = 0; i < 16; i++) {
+    const els = moduleEls[i];
+    if (!els || !els.screenBar) continue;
+
+    els.screenBar.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragModuleId = i;
+      const val = valueFromBarEvent(i, e);
+      if (val !== null) applyBarValue(i, val);
+    });
+  }
+
+  document.addEventListener("mousemove", (e) => {
+    if (dragModuleId === null) return;
+    const val = valueFromBarEvent(dragModuleId, e);
+    if (val !== null) applyBarValue(dragModuleId, val);
+  });
+
+  document.addEventListener("mouseup", () => {
+    dragModuleId = null;
+  });
+}
+
 buildGrid();
+setupBarInteraction();
 setConnected(false, "Disconnected");
 updatePanelSelectionState();
 autoConnectMIDI();

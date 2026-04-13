@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>8DOF Controller Config</title>
+    <title>Hexadeck Config</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,7 +17,7 @@
     <main class="app">
       <header class="topbar">
         <div>
-          <h1>8DOF Controller</h1>
+          <h1>Hexadeck</h1>
           <p class="subtitle">USB MIDI SysEx configurator</p>
         </div>
         <div class="midi-controls">
@@ -49,7 +49,17 @@
         <section class="panel panel-commands">
           <div class="command-row">
             <button id="syncButton" class="ghost">Sync State</button>
-            <button id="fwButton" class="ghost" title="Jump to bootloader">Firmware Update</button>
+            <button id="midiFwButton" class="ghost" title="Update firmware via MIDI SysEx">Firmware Update</button>
+            <button id="fwButton" class="ghost" title="Jump to DFU bootloader">Firmware Update DFU</button>
+            <div class="dfu-progress hidden" id="midiFwProgress" aria-live="polite">
+              <div class="dfu-progress-row">
+                <span class="dfu-progress-label">MIDI Update</span>
+                <span class="dfu-progress-value" id="midiFwProgressValue">0%</span>
+              </div>
+              <progress id="midiFwProgressBar" value="0" max="100"></progress>
+              <div class="dfu-status" id="midiFwProgressStatus">Select firmware to start.</div>
+            </div>
+            <input id="midiFwFileInput" type="file" accept=".bin,application/octet-stream" hidden />
             <div class="dfu-progress hidden" id="dfuProgress" aria-live="polite">
               <div class="dfu-progress-row">
                 <span class="dfu-progress-label">DFU Update</span>
@@ -146,6 +156,11 @@
                 <input id="knobStepInput" type="number" min="1" max="127" value="1" />
                 <button id="sendKnobStep" class="ghost">Send</button>
               </div>
+              <div class="form-row">
+                <label for="buttonStepInput">Clicked Step</label>
+                <input id="buttonStepInput" type="number" min="1" max="127" value="1" />
+                <button id="sendButtonStep" class="ghost">Send</button>
+              </div>
             </div>
           </section>
 
@@ -171,14 +186,7 @@
                 <input id="buttonReleasedInput" type="number" min="0" max="127" value="0" />
                 <button id="sendButtonReleased" class="ghost">Send</button>
               </div>
-              <div class="form-row">
-                <label for="buttonStepInput">Clicked Step</label>
-                <input id="buttonStepInput" type="number" min="1" max="127" value="1" />
-                <button id="sendButtonStep" class="ghost">Send</button>
-              </div>
             </div>
-
-            <div class="note">Button SysEx controls are now active.</div>
           </section>
         </div>
         </section>

@@ -3,14 +3,14 @@
 #include "usbd_composite.h"
 #include "usbd_desc.h"
 
+#define BOOTLOADER_UPDATE_MAGIC ((uint32_t)0xB00710AD)
+
 void JumpToBootloader(void)
 {
 
 	extern USBD_HandleTypeDef hUsbDevice;
 	USBD_Stop(&hUsbDevice);
 	USBD_DeInit(&hUsbDevice);
-	
-//	HAL_Delay(100);
 
 	/* Disable all interrupts */
 	__disable_irq();
@@ -36,4 +36,20 @@ void JumpToBootloader(void)
 	SYSCFG->MEMRMP = 0x01;
 	__enable_irq();
 	boot_load();
+}
+
+void EnterCustomBootloader(void)
+{
+	extern USBD_HandleTypeDef hUsbDevice;
+	USBD_Stop(&hUsbDevice);
+	USBD_DeInit(&hUsbDevice);
+
+	/* Write update magic to RTC backup register and reset.
+	 * The custom bootloader will read this on startup and enter update mode. */
+	__HAL_RCC_PWR_CLK_ENABLE();
+	HAL_PWR_EnableBkUpAccess();
+	RTC->BKP0R = BOOTLOADER_UPDATE_MAGIC;
+
+	/* System reset - custom bootloader will handle the rest */
+	NVIC_SystemReset();
 }

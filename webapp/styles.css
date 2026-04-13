@@ -215,7 +215,7 @@ select:disabled {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px 10px;
+  padding: 8px 10px;
   color: var(--screen-text, #e3e9f0);
   font-weight: 600;
   text-align: left;
@@ -246,6 +246,7 @@ select:disabled {
   color: var(--screen-text, #cfd7e3);
   position: relative;
   min-height: 18px;
+  margin-top: auto;
 }
 
 .screen-value {
@@ -257,11 +258,14 @@ select:disabled {
 }
 
 .screen-bar {
-  height: 8px;
+  height: 16px;
   background: #202733;
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid #2a3442;
+  flex-shrink: 0;
+  margin-bottom: 10%;
+  cursor: pointer;
 }
 
 .screen-bar-fill {

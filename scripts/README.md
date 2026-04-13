@@ -4,16 +4,43 @@ Host-side Python utilities for firmware updates, device configuration, and integ
 
 ## Tools
 
-### Firmware Updater
+### Firmware Updater (USB MIDI)
+
+Flashes firmware binaries to the device over USB MIDI SysEx using the custom bootloader.
+
+```bash
+cd scripts/firmware_updater
+pip install -r requirements.txt
+
+# Update firmware (auto-enters bootloader mode)
+python3 midi_fw_update.py path/to/hexadeck.bin
+
+# Specify MIDI port (partial name match)
+python3 midi_fw_update.py hexadeck.bin --port "Hexadeck"
+
+# List available MIDI ports
+python3 midi_fw_update.py --list
+
+# Skip bootloader entry (device already in bootloader mode)
+python3 midi_fw_update.py hexadeck.bin --already-in-bootloader
+```
+
+The script sends a MIDI SysEx command to reboot the device into bootloader mode, then transfers the firmware in chunks with CRC32 verification.
+
+**Dependencies**: `python-rtmidi`
+
+---
+
+### Firmware Updater (USB DFU)
 
 Flashes firmware binaries to the device over USB DFU.
 
 ```bash
 # macOS/Linux — auto-installs dependencies (libusb, pyusb, pyfu-usb)
-./scripts/firmware_updater/update_macos.sh -D hexadeck.bin
+./scripts/firmware_updater_dfu/update_macos.sh -D hexadeck.bin
 
 # Windows
-scripts\firmware_updater\update_windows.bat -D hexadeck.bin
+scripts\firmware_updater_dfu\update_windows.bat -D hexadeck.bin
 ```
 
 Place firmware binaries in `firmware_updater/binaries/`. The device must be in DFU mode — trigger via serial command (`/fw/update`), MIDI SysEx, or the on-device menu.

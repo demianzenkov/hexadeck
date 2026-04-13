@@ -1036,7 +1036,7 @@ void TaskOS::task(void const *arg)
 						uint8_t value = sysex_input_ev.buffer[2];
 						if(	(value >= module_state->min_value) && 
 						(value <= module_state->max_value)) {
-							p_this->setStateValue(acm_event.id, value);
+							p_this->setStateValue(id, value);
 							p_this->ui_p->refreshDisplayState(id, module_state);
 							p_this->task_midi_p->sendMidiCC(module_state->channel, module_state->cc, module_state->value);
 						}
@@ -1409,6 +1409,10 @@ void TaskOS::task(void const *arg)
 					} else if(id < 16) {
 						send_reply(id);
 					}
+					break;
+				}
+				case MIDI_SYS_CUSTOM_BOOTLOADER: {
+					EnterCustomBootloader();
 					break;
 				}
 				default:
