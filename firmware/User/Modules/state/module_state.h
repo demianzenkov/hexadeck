@@ -19,11 +19,12 @@ typedef struct {
 	uint8_t simple_screen_enabled;
 	uint8_t button_midi_enabled;
 	uint8_t button_onclick_mode;
+	uint8_t button_onclick_active;
 	uint8_t button_onclick_step;
 	uint8_t button_midi_channel;
-	uint8_t button_cc;
-	uint8_t button_default_value;
-	uint8_t button_pressed_value;
+	uint8_t button_midi_cc;
+	uint8_t button_midi_released_value;
+	uint8_t button_midi_pressed_value;
 	char name[16 + 1];
 	lv_color_t background_color;
 	lv_color_t bar_color;
